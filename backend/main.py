@@ -1,12 +1,13 @@
-from fastapi import FastAPI
+import fastapi
 from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
+from sqlmodel import Session, SQLModel, create_engine
 import uvicorn
-import qrcode
-import base64
-import requests
+import schema
 
-app = FastAPI()
+app = fastapi.FastAPI()
+ticket_routes = fastapi.APIRouter(prefix="/ticket", tags=["ticket_manager"])
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,16 +16,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get(
-    '/generate_qr_code/{data}/',
-    response_class=Response
-)
-def generate_qr_code(data: str):
-    img = qrcode.make(data)
-    img.save('qrcode.png')
-    with open('qrcode.png', 'rb') as f:
-        encoded_img = f.read()
-    return Response(content=encoded_img, media_type="image/png")
+sqlite_file_name = "database.db"
+sqlite_url = f"sqlite:///{sqlite_file_name}"
 
-if __name__ == '__main__':
-    uvicorn.run(app, host="127.0.0.1", port=8080, reload=True)
+connect_args = {"check_same_thread": False}
+engine = create_engine(sqlite_url, echo=True, connect_args=connect_args)
+
+
+@app.on_event("startup")
+def on_startup():
+    SQLModel.metadata.create_all(engine)
+
+
+@ticket_routes.post("/create")
+def create_ticket():
+    pass
+
+
+app.include_router(ticket_routes)
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8080, reload=True)
