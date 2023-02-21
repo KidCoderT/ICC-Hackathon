@@ -1,9 +1,13 @@
+import os
+import dotenv
 import fastapi
-from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
-from sqlmodel import Session, SQLModel, create_engine
+import sqlalchemy.orm as orm
+import sqlalchemy as sql
 import uvicorn
 import schema
+
+dotenv.load_dotenv()
 
 app = fastapi.FastAPI()
 ticket_routes = fastapi.APIRouter(prefix="/ticket", tags=["ticket_manager"])
@@ -16,16 +20,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-sqlite_file_name = "database.db"
-sqlite_url = f"sqlite:///{sqlite_file_name}"
+DATABASE = f"mysql+pymysql://{os.getenv('DB_LOCATION')}"
 
-connect_args = {"check_same_thread": False}
-engine = create_engine(sqlite_url, echo=True, connect_args=connect_args)
+engine = sql.create_engine(DATABASE, echo=True)
+SessionLocal = orm.sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 @app.on_event("startup")
 def on_startup():
-    SQLModel.metadata.create_all(engine)
+    schema.Base.metadata.create_all(engine)
 
 
 @ticket_routes.post("/create")
@@ -36,4 +39,4 @@ def create_ticket():
 app.include_router(ticket_routes)
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8080, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=8080)
