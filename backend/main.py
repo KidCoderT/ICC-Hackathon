@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import sqlalchemy.orm as orm
 import sqlalchemy as sql
 import uvicorn
+
 import schema
 
 dotenv.load_dotenv()
@@ -28,7 +29,8 @@ SessionLocal = orm.sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 @app.on_event("startup")
 def on_startup():
-    schema.Base.metadata.create_all(engine)
+    # schema.Base.metadata.drop_all(engine) # type: ignore
+    schema.Base.metadata.create_all(engine) # type: ignore
 
 
 @ticket_routes.post("/create")
