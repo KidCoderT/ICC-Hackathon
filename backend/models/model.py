@@ -82,7 +82,7 @@ class Seat(Base):  # type: ignore
     row_no = sql.Column(sql.Integer)
     seat_no = sql.Column(sql.Integer, primary_key=True)
 
-    tickets = orm.relationship("Ticket", backref="seat")
+    # tickets = orm.relationship("Ticket", backref="seat")
 
     stadium_name = sql.Column(
         sql.String(255), sql.ForeignKey("stadiums.name"), primary_key=True
