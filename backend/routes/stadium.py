@@ -47,7 +47,11 @@ def new_stadium(new_stadium: schema.NewStadium, db: orm.Session = Depends(db_ses
     db.refresh(stadium)
 
     return fastapi.responses.JSONResponse(
-        content={"status": "CREATED", "msg": "New Stadium Added to DB", "model": stadium.__dict__},
+        content={
+            "status": "CREATED",
+            "msg": "New Stadium Added to DB",
+            "model": schema.Stadium(**stadium.__dict__),
+        },
         status_code=fastapi.status.HTTP_201_CREATED,
     )
 

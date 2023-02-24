@@ -45,4 +45,7 @@ class NewMatch(BaseModel):
 
 
 class Match(BaseModel):
-    pass
+    id: int
+    start_time: datetime
+    stadium_name: str
+    finished: bool
