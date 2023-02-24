@@ -5,6 +5,8 @@ import sqlalchemy.orm as orm
 from sqlalchemy.ext.declarative import declarative_base
 
 
+# todo: there are different match types
+
 __all__ = (
     "Base",
     "Person",
@@ -34,7 +36,7 @@ def create_ticket_id():
         return ticket_id
 
 
-class Person(Base): # type: ignore
+class Person(Base):  # type: ignore
     __tablename__ = "person"
     id = sql.Column(sql.Integer, primary_key=True, autoincrement=True)
     ticket = orm.relationship("Ticket", uselist=False, backref="person")
@@ -51,7 +53,7 @@ class Person(Base): # type: ignore
     ticket = orm.relationship("Ticket", back_populates="person", uselist=False)
 
 
-class Stadium(Base): # type: ignore
+class Stadium(Base):  # type: ignore
     __tablename__ = "stadiums"
 
     name = sql.Column(sql.String(255), primary_key=True)
@@ -59,7 +61,7 @@ class Stadium(Base): # type: ignore
     pincode = sql.Column(sql.String(10))
 
 
-class Block(Base): # type: ignore
+class Block(Base):  # type: ignore
     __tablename__ = "blocks"
 
     name = sql.Column(sql.String(2))
@@ -68,24 +70,38 @@ class Block(Base): # type: ignore
     y_offset = sql.Column(sql.Float)
 
     stadium_name = sql.Column(sql.String(255), sql.ForeignKey("stadiums.name"))
-    __table_args__ = (sql.PrimaryKeyConstraint(
-        "name", "stadium_name", name="block_primary_key"),)
+    __table_args__ = (
+        sql.PrimaryKeyConstraint("name", "stadium_name", name="block_primary_key"),
+    )
 
 
-class Seat(Base): # type: ignore
+class Seat(Base):  # type: ignore
     __tablename__ = "seats"
 
     row_name = sql.Column(sql.String(2))
-    row = sql.Column(sql.Integer)
+    row_no = sql.Column(sql.Integer)
+    seat_no = sql.Column(sql.Integer)
 
     tickets = orm.relationship("Ticket", backref="seat")
 
     stadium_name = sql.Column(sql.String(255), sql.ForeignKey("stadiums.name"))
     block_name = sql.Column(sql.String(2), sql.ForeignKey("blocks.name"))
-    __table_args__ = (sql.PrimaryKeyConstraint("row_name", "block_name", "stadium_name", name="seat_primary_key"),)
+    __table_args__ = (
+        sql.PrimaryKeyConstraint(
+            "row_name", "seat_no", "block_name", "stadium_name", name="seat_primary_key"
+        ),
+        sql.Index(
+            "idx_seats_row_seat_block_stadium",
+            "row_name",
+            "seat_no",
+            "block_name",
+            "stadium_name",
+        ),
+        {},
+    )
 
 
-class Match(Base): # type: ignore
+class Match(Base):  # type: ignore
     __tablename__ = "matches"
     id = sql.Column(sql.Integer, primary_key=True, autoincrement=True)
     timing = sql.Column(sql.DateTime)
@@ -97,25 +113,37 @@ class Match(Base): # type: ignore
     finished = sql.Column(sql.Boolean(), default=False)
 
 
-class Ticket(Base): # type: ignore
+class Ticket(Base):  # type: ignore
     __tablename__ = "tickets"
     id = sql.Column(sql.Integer, primary_key=True, autoincrement=True)
     ticket_id = sql.Column(sql.String(6), default=create_ticket_id)
     secret_id = sql.Column(sql.String(36), default=str(uuid.uuid4()))
 
-    person_id = sql.Column(sql.Integer, sql.ForeignKey("person.id"), unique=True, nullable=False)
+    person_id = sql.Column(
+        sql.Integer, sql.ForeignKey("person.id"), unique=True, nullable=False
+    )
     match_id = sql.Column(sql.Integer, sql.ForeignKey("matches.id"), nullable=False)
     stadium_name = sql.Column(sql.String(255), sql.ForeignKey("stadiums.name"))
-    block_name = sql.Column(sql.String(255), sql.ForeignKey("blocks.name"), nullable=False)
-    seat_id = sql.Column(sql.String(255), sql.ForeignKey("seats.row_name"), nullable=False)
+    block_name = sql.Column(
+        sql.String(255), sql.ForeignKey("blocks.name"), nullable=False
+    )
+    seat_row = sql.Column(
+        sql.String(255), sql.ForeignKey("seats.row_name"), nullable=False
+    )
+    seat_no = sql.Column(sql.Integer, sql.ForeignKey("seats.seat_no"), nullable=False)
 
     entered = sql.Column(sql.Boolean(), default=False)
     person = orm.relationship("Person", back_populates="ticket")
 
     __table_args__ = (
         sql.ForeignKeyConstraint(
-            ["seat_id", "block_name", "stadium_name"],
-            ["seats.row_name", "seats.block_name", "seats.stadium_name"],
+            ["seat_row", "seat_no", "block_name", "stadium_name"],
+            [
+                "seats.row_name",
+                "seats.seat_no",
+                "seats.block_name",
+                "seats.stadium_name",
+            ],
         ),
         sql.ForeignKeyConstraint(
             ["block_name", "stadium_name"],

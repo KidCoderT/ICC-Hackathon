@@ -48,7 +48,7 @@ class Database(metaclass=SingletonMeta):
         base.metadata.drop_all(self.engine)
 
 
-def db_session() -> orm.Session:
+def db_session() -> orm.Session:  # type: ignore
     """Creates a new local database session through which you can access the database and update it.
     This is made using a yield such that finally the session once created will be closed.
 

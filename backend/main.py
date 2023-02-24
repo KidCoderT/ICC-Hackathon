@@ -29,7 +29,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 def on_startup():
-    # database.Database().delete_db(Base)
+    database.Database().delete_db(Base)
     database.Database().init_db(Base)
 
 
