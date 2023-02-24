@@ -76,7 +76,6 @@ class Seat(Base): # type: ignore
     __tablename__ = "seats"
 
     row_name = sql.Column(sql.String(2))
-    column = sql.Column(sql.Integer)
     row = sql.Column(sql.Integer)
 
     tickets = orm.relationship("Ticket", backref="seat")

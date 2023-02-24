@@ -1,17 +1,22 @@
-import os
+# pylint: disable=(wrong-import-position, missing-module-docstring)
+
 import dotenv
+
 import fastapi
 from fastapi.middleware.cors import CORSMiddleware
 import sqlalchemy.orm as orm
 import sqlalchemy as sql
 import uvicorn
 
-import schema
-
 dotenv.load_dotenv()
 
+from models import database
+from models.model import Base
+
+import routes
+
 app = fastapi.FastAPI()
-ticket_routes = fastapi.APIRouter(prefix="/ticket", tags=["ticket_manager"])
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -21,24 +26,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DATABASE = f"mysql+pymysql://{os.getenv('DB_LOCATION')}"
-
-engine = sql.create_engine(DATABASE, echo=True)
-SessionLocal = orm.sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 
 @app.on_event("startup")
 def on_startup():
-    # schema.Base.metadata.drop_all(engine) # type: ignore
-    schema.Base.metadata.create_all(engine) # type: ignore
+    # database.Database().delete_db(Base)
+    database.Database().init_db(Base)
 
 
-@ticket_routes.post("/create")
-def create_ticket():
-    pass
+app.include_router(routes.tickets_router)
+app.include_router(routes.stadium_router)
+app.include_router(routes.match_router)
 
-
-app.include_router(ticket_routes)
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    uvicorn.run("main:app", host="0.0.0.0", port=8080, reload=True)
