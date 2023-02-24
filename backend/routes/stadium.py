@@ -1,3 +1,4 @@
+from typing import List
 import fastapi
 from fastapi import Depends
 from models.database import db_session, orm
@@ -46,9 +47,79 @@ def new_stadium(new_stadium: schema.NewStadium, db: orm.Session = Depends(db_ses
     db.refresh(stadium)
 
     return fastapi.responses.JSONResponse(
-        content={"status": "CREATED", "msg": "New Stadium Added to DB"},
+        content={"status": "CREATED", "msg": "New Stadium Added to DB", "model": stadium.__dict__},
         status_code=fastapi.status.HTTP_201_CREATED,
     )
 
 
-# todo: access block, access seat
+@router.get("/all", response_model=List[schema.Stadium])
+def all_stadiums(db: orm.Session = Depends(db_session)):
+    return list(map(lambda x: x.__dict__, db.query(model.Stadium).all()))
+
+
+@router.get("/get/stadium")
+def get_stadium(
+    request: schema.FetchStadium,
+    db: orm.Session = Depends(db_session),
+):
+    stadium = (
+        db.query(model.Stadium)
+        .filter_by(stadium_name=request.stadium_name)
+        .one_or_none()
+    )
+
+    if stadium:
+        return stadium.__dict__
+
+    raise fastapi.exceptions.HTTPException(
+        detail={"STATUS": "NOT FOUND", "msg": "Block Not Found"},
+        status_code=fastapi.status.HTTP_404_NOT_FOUND,
+    )
+
+
+@router.get("/get/block")
+def get_block(
+    request: schema.FetchBlock,
+    db: orm.Session = Depends(db_session),
+):
+    block = (
+        db.query(model.Block)
+        .filter_by(
+            name=request.block_name,
+            stadium_name=request.stadium_name,
+        )
+        .one_or_none()
+    )
+
+    if block:
+        return block.__dict__
+
+    raise fastapi.exceptions.HTTPException(
+        detail={"STATUS": "NOT FOUND", "msg": "Block Not Found"},
+        status_code=fastapi.status.HTTP_404_NOT_FOUND,
+    )
+
+
+@router.get("/get/seat")
+def get_seat(
+    request: schema.FetchSeat,
+    db: orm.Session = Depends(db_session),
+):
+    seat = (
+        db.query(model.Seat)
+        .filter_by(
+            row_name=request.row_name,
+            seat_no=request.seat_no,
+            block_name=request.block_name,
+            stadium_name=request.stadium_name,
+        )
+        .one_or_none()
+    )
+
+    if seat:
+        return seat.__dict__
+
+    raise fastapi.exceptions.HTTPException(
+        detail={"STATUS": "NOT FOUND", "msg": "Seat Not Found"},
+        status_code=fastapi.status.HTTP_404_NOT_FOUND,
+    )

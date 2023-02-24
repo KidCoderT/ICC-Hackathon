@@ -108,7 +108,7 @@ class Seat(Base):  # type: ignore
 class Match(Base):  # type: ignore
     __tablename__ = "matches"
     id = sql.Column(sql.Integer, primary_key=True, autoincrement=True)
-    timing = sql.Column(sql.DateTime)
+    start_time = sql.Column(sql.DateTime)
 
     stadium_name = sql.Column(sql.String(255), sql.ForeignKey("stadiums.name"))
     stadium = orm.relationship("Stadium", backref="matches")

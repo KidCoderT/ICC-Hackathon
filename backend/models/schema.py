@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List
 from pydantic import BaseModel
 
@@ -18,3 +19,30 @@ class NewStadium(BaseModel):
     pincode: str
     blocks: List[Block]
 
+
+class Stadium(BaseModel):
+    name: str
+    country: str
+    pincode: str
+
+
+class FetchStadium(BaseModel):
+    stadium_name: str
+
+
+class FetchBlock(FetchStadium):
+    block_name: str
+
+
+class FetchSeat(FetchBlock):
+    row_name: str
+    seat_no: int
+
+
+class NewMatch(BaseModel):
+    start_time: datetime
+    stadium_name: str
+
+
+class Match(BaseModel):
+    pass
