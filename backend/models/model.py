@@ -36,6 +36,7 @@ def create_ticket_id():
 
         return ticket_id
 
+
 class MatchEnum(enum.Enum):
     T20 = 3
     ODI = 5
@@ -55,6 +56,7 @@ class Person(Base):  # type: ignore
 
     email = sql.Column(sql.String(255))
     phone = sql.Column(sql.String(20))
+    verified = sql.Column(sql.Boolean(), default=False)
 
     ticket = orm.relationship("Ticket", back_populates="person", uselist=False)
 
@@ -129,7 +131,7 @@ class Ticket(Base):  # type: ignore
     __tablename__ = "tickets"
     id = sql.Column(sql.Integer, primary_key=True, autoincrement=True)
     ticket_id = sql.Column(sql.String(6), default=create_ticket_id)
-    secret_id = sql.Column(sql.String(36), default=str(uuid.uuid4()))
+    secret_id = sql.Column(sql.String(36), default=lambda: str(uuid.uuid4()))
     match_id = sql.Column(sql.Integer, sql.ForeignKey("matches.id"), nullable=False)
 
     timestamps = sql.Column(sql.JSON)
