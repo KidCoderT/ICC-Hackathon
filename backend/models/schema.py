@@ -1,5 +1,5 @@
 from typing import List
-from datetime import datetime
+from datetime import datetime, date
 from pydantic import BaseModel
 
 from .model import MatchEnum
@@ -54,3 +54,17 @@ class Match(BaseModel):
     stadium_name: str
     finished: bool
 
+class NewTicket(BaseModel):
+    gender: str
+    nationality: str
+    first_name: str
+    last_name: str
+    dob: date
+    email: str
+    phone: str
+
+    match_id: int
+    stadium_name: str
+    block: str
+    row_name: str
+    seat_no: str

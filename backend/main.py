@@ -1,5 +1,6 @@
 # pylint: disable=(wrong-import-position, missing-module-docstring)
 
+import os
 import dotenv
 
 import fastapi
@@ -10,10 +11,14 @@ import uvicorn
 
 dotenv.load_dotenv()
 
+from repository.email import Server
 from models import database
 from models.model import Base
 
 import routes
+
+SENDER_EMAIL_PASSWORD = str(os.getenv("SENDER_EMAIL_PASSWORD"))
+SENDER_EMAIL = str(os.getenv("SENDER_EMAIL"))
 
 app = fastapi.FastAPI()
 
@@ -29,6 +34,8 @@ app.add_middleware(
 
 @app.on_event("startup")
 def on_startup():
+    Server.initialize(SENDER_EMAIL, SENDER_EMAIL_PASSWORD)
+
     # database.Database().delete_db(Base)
     database.Database().init_db(Base)
 
@@ -36,6 +43,10 @@ def on_startup():
 app.include_router(routes.tickets_router)
 app.include_router(routes.stadium_router)
 app.include_router(routes.match_router)
+
+# @app.on_event("shutdown")
+# def shutdown_event():
+    # Server.server.close()
 
 
 if __name__ == "__main__":

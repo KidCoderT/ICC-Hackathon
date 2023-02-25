@@ -1,4 +1,3 @@
-from enum import Enum
 from typing import Any, Dict, List, Optional
 
 import fastapi
@@ -7,8 +6,6 @@ from models.database import db_session, orm
 from models import schema, model
 
 router = fastapi.APIRouter(prefix="/match", tags=["matches_manager"])
-
-# todo: order by finished or not
 
 
 @router.post("/create")
@@ -29,7 +26,7 @@ def new_match(new_match: schema.NewMatch, db: orm.Session = Depends(db_session))
         content={
             "status": "CREATED",
             "msg": "New Match Created",
-            "model": schema.Match(**match.__dict__),
+            # "model": schema.Match(**match.__dict__),
         },
         status_code=fastapi.status.HTTP_201_CREATED,
     )
@@ -59,12 +56,13 @@ def get_match(
 @router.get("/stadium/{name}")
 def get_stadium_matches(
     name: str,
-    fetch_param: Optional[model.MatchEnum],
+    fetch_param: model.MatchEnum,
+    all: bool = False,
     db: orm.Session = Depends(db_session),
 ):
     query_params: Dict[str, Any] = {"stadium_name": name}
 
-    if fetch_param:
+    if not all ^ fetch_param:
         query_params["match_format"] = fetch_param
     # todo: add matching for fetch_param
 
@@ -77,6 +75,7 @@ def end_match(
     id: int,
     db: orm.Session = Depends(db_session),
 ):
+    # fixme soon
     matches = db.query(model.Match).get(id)
 
     if not matches:

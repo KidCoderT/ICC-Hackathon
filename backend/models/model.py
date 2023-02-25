@@ -1,6 +1,7 @@
 import enum
 import uuid
-import string, secrets
+import string
+import secrets
 import sqlalchemy as sql
 import sqlalchemy.orm as orm
 from sqlalchemy.ext.declarative import declarative_base
@@ -43,12 +44,17 @@ class MatchEnum(enum.Enum):
     TEST = 8
 
 
+class GenderEnum(enum.Enum):
+    MALE = "male"
+    FEMALE = "female"
+
+
 class Person(Base):  # type: ignore
     __tablename__ = "person"
     id = sql.Column(sql.Integer, primary_key=True, autoincrement=True)
     ticket = orm.relationship("Ticket", uselist=False, backref="person")
 
-    gender = sql.Column(sql.Enum("male", "female", "other", name="gender"))
+    gender = sql.Column(sql.Enum(GenderEnum, native_enum=True))
     nationality = sql.Column(sql.String(3))
     first_name = sql.Column(sql.String(50))
     last_name = sql.Column(sql.String(50))
@@ -79,7 +85,8 @@ class Block(Base):  # type: ignore
 
     stadium_name = sql.Column(sql.String(255), sql.ForeignKey("stadiums.name"))
     __table_args__ = (
-        sql.PrimaryKeyConstraint("name", "stadium_name", name="block_primary_key"),
+        sql.PrimaryKeyConstraint(
+            "name", "stadium_name", name="block_primary_key"),
     )
 
 
@@ -131,8 +138,10 @@ class Ticket(Base):  # type: ignore
     __tablename__ = "tickets"
     id = sql.Column(sql.Integer, primary_key=True, autoincrement=True)
     ticket_id = sql.Column(sql.String(6), default=create_ticket_id)
-    secret_id = sql.Column(sql.String(36), default=lambda: str(uuid.uuid4()))
-    match_id = sql.Column(sql.Integer, sql.ForeignKey("matches.id"), nullable=False)
+    secret_id = sql.Column(sql.String(
+        36), default=lambda: str(uuid.uuid4()), unique=True)
+    match_id = sql.Column(sql.Integer, sql.ForeignKey(
+        "matches.id"), nullable=False)
 
     timestamps = sql.Column(sql.JSON)
 
