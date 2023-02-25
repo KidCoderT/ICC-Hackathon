@@ -78,17 +78,22 @@ class Block(Base):  # type: ignore
 class Seat(Base):  # type: ignore
     __tablename__ = "seats"
 
-    row_name = sql.Column(sql.String(2))
+    row_name = sql.Column(sql.String(2), primary_key=True)
     row_no = sql.Column(sql.Integer)
-    seat_no = sql.Column(sql.Integer)
+    seat_no = sql.Column(sql.Integer, primary_key=True)
 
-    tickets = orm.relationship("Ticket", backref="seat")
+    # tickets = orm.relationship("Ticket", backref="seat")
 
-    stadium_name = sql.Column(sql.String(255), sql.ForeignKey("stadiums.name"))
-    block_name = sql.Column(sql.String(2), sql.ForeignKey("blocks.name"))
+    stadium_name = sql.Column(
+        sql.String(255), sql.ForeignKey("stadiums.name"), primary_key=True
+    )
+    block_name = sql.Column(
+        sql.String(2), sql.ForeignKey("blocks.name"), primary_key=True
+    )
+
     __table_args__ = (
-        sql.PrimaryKeyConstraint(
-            "row_name", "seat_no", "block_name", "stadium_name", name="seat_primary_key"
+        sql.UniqueConstraint(
+            "row_name", "seat_no", "block_name", "stadium_name", name="uq_seat_row_seat"
         ),
         sql.Index(
             "idx_seats_row_seat_block_stadium",
@@ -97,14 +102,13 @@ class Seat(Base):  # type: ignore
             "block_name",
             "stadium_name",
         ),
-        {},
     )
 
 
 class Match(Base):  # type: ignore
     __tablename__ = "matches"
     id = sql.Column(sql.Integer, primary_key=True, autoincrement=True)
-    timing = sql.Column(sql.DateTime)
+    start_time = sql.Column(sql.DateTime)
 
     stadium_name = sql.Column(sql.String(255), sql.ForeignKey("stadiums.name"))
     stadium = orm.relationship("Stadium", backref="matches")
@@ -118,21 +122,39 @@ class Ticket(Base):  # type: ignore
     id = sql.Column(sql.Integer, primary_key=True, autoincrement=True)
     ticket_id = sql.Column(sql.String(6), default=create_ticket_id)
     secret_id = sql.Column(sql.String(36), default=str(uuid.uuid4()))
+    entered = sql.Column(sql.Boolean(), default=False)
+    match_id = sql.Column(sql.Integer, sql.ForeignKey("matches.id"), nullable=False)
 
     person_id = sql.Column(
-        sql.Integer, sql.ForeignKey("person.id"), unique=True, nullable=False
+        sql.Integer,
+        sql.ForeignKey("person.id"),
+        unique=True,
+        nullable=False,
     )
-    match_id = sql.Column(sql.Integer, sql.ForeignKey("matches.id"), nullable=False)
-    stadium_name = sql.Column(sql.String(255), sql.ForeignKey("stadiums.name"))
-    block_name = sql.Column(
-        sql.String(255), sql.ForeignKey("blocks.name"), nullable=False
-    )
-    seat_row = sql.Column(
-        sql.String(255), sql.ForeignKey("seats.row_name"), nullable=False
-    )
-    seat_no = sql.Column(sql.Integer, sql.ForeignKey("seats.seat_no"), nullable=False)
 
-    entered = sql.Column(sql.Boolean(), default=False)
+    stadium_name = sql.Column(
+        sql.String(255),
+        sql.ForeignKey("stadiums.name"),
+        nullable=False,
+    )
+
+    block_name = sql.Column(
+        sql.String(255),
+        sql.ForeignKey("blocks.name"),
+        nullable=False,
+    )
+
+    seat_row = sql.Column(
+        sql.String(255),
+        sql.ForeignKey("seats.row_name"),
+        nullable=False,
+    )
+
+    seat_no = sql.Column(
+        sql.Integer,
+        nullable=False,
+    )
+
     person = orm.relationship("Person", back_populates="ticket")
 
     __table_args__ = (
@@ -144,9 +166,11 @@ class Ticket(Base):  # type: ignore
                 "seats.block_name",
                 "seats.stadium_name",
             ],
+            name="fk_ticket_seat",
         ),
         sql.ForeignKeyConstraint(
             ["block_name", "stadium_name"],
             ["blocks.name", "blocks.stadium_name"],
+            name="fk_ticket_block",
         ),
     )
