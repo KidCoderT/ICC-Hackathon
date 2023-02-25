@@ -1,3 +1,4 @@
+import enum
 import uuid
 import string, secrets
 import sqlalchemy as sql
@@ -34,6 +35,11 @@ def create_ticket_id():
             continue
 
         return ticket_id
+
+class MatchEnum(enum.Enum):
+    T20 = 3
+    ODI = 5
+    TEST = 8
 
 
 class Person(Base):  # type: ignore
@@ -114,6 +120,8 @@ class Match(Base):  # type: ignore
     stadium = orm.relationship("Stadium", backref="matches")
     tickets = orm.relationship("Ticket", backref="match")
 
+    match_format = sql.Column(sql.Enum(MatchEnum, native_enum=True))
+
     finished = sql.Column(sql.Boolean(), default=False)
 
 
@@ -122,8 +130,9 @@ class Ticket(Base):  # type: ignore
     id = sql.Column(sql.Integer, primary_key=True, autoincrement=True)
     ticket_id = sql.Column(sql.String(6), default=create_ticket_id)
     secret_id = sql.Column(sql.String(36), default=str(uuid.uuid4()))
-    entered = sql.Column(sql.Boolean(), default=False)
     match_id = sql.Column(sql.Integer, sql.ForeignKey("matches.id"), nullable=False)
+
+    timestamps = sql.Column(sql.JSON)
 
     person_id = sql.Column(
         sql.Integer,

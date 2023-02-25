@@ -1,6 +1,8 @@
-from datetime import datetime
 from typing import List
+from datetime import datetime
 from pydantic import BaseModel
+
+from .model import MatchEnum
 
 
 class Block(BaseModel):
@@ -42,10 +44,13 @@ class FetchSeat(FetchBlock):
 class NewMatch(BaseModel):
     start_time: datetime
     stadium_name: str
+    match_format: MatchEnum
 
 
 class Match(BaseModel):
     id: int
+    match_format: MatchEnum
     start_time: datetime
     stadium_name: str
     finished: bool
+
