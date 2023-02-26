@@ -1,7 +1,7 @@
 import os
 import sqlalchemy as sql
 import sqlalchemy.orm as orm
-from repository.patterns import SingletonMeta
+from src.patterns import SingletonMeta
 
 
 __all__ = (

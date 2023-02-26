@@ -11,14 +11,10 @@ import uvicorn
 
 dotenv.load_dotenv()
 
-from repository.email import Server
 from models import database
 from models.model import Base
 
 import routes
-
-SENDER_EMAIL_PASSWORD = str(os.getenv("SENDER_EMAIL_PASSWORD"))
-SENDER_EMAIL = str(os.getenv("SENDER_EMAIL"))
 
 app = fastapi.FastAPI()
 
@@ -34,8 +30,6 @@ app.add_middleware(
 
 @app.on_event("startup")
 def on_startup():
-    Server.initialize(SENDER_EMAIL, SENDER_EMAIL_PASSWORD)
-
     # database.Database().delete_db(Base)
     database.Database().init_db(Base)
 

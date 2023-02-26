@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from datetime import datetime, date
 from pydantic import BaseModel
 
@@ -28,19 +28,6 @@ class Stadium(BaseModel):
     pincode: str
 
 
-class FetchStadium(BaseModel):
-    stadium_name: str
-
-
-class FetchBlock(FetchStadium):
-    block_name: str
-
-
-class FetchSeat(FetchBlock):
-    row_name: str
-    seat_no: int
-
-
 class NewMatch(BaseModel):
     start_time: datetime
     stadium_name: str
@@ -53,6 +40,13 @@ class Match(BaseModel):
     start_time: datetime
     stadium_name: str
     finished: bool
+
+
+class FetchStadiumMatches(BaseModel):
+    stadium_name: str
+    fetch_param: Optional[MatchEnum] = None
+    all: bool = True
+
 
 class NewTicket(BaseModel):
     gender: str

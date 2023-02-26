@@ -6,6 +6,8 @@ from models import schema, model
 
 router = fastapi.APIRouter(prefix="/stadium", tags=["stadiums_manager"])
 
+# add authentication check
+
 
 @router.post("/create")
 def new_stadium(new_stadium: schema.NewStadium, db: orm.Session = Depends(db_session)):
@@ -34,8 +36,8 @@ def new_stadium(new_stadium: schema.NewStadium, db: orm.Session = Depends(db_ses
             for j in range(block.seats_per_row):
                 new_seat = model.Seat(
                     row_name=row_name,
-                    row_no=i,
-                    seat_no=j,
+                    row_no=i + 1,
+                    seat_no=j + 1,
                     stadium_name=stadium.name,
                     block_name=new_block.name,
                 )
@@ -61,14 +63,14 @@ def all_stadiums(db: orm.Session = Depends(db_session)):
     return list(map(lambda x: x.__dict__, db.query(model.Stadium).all()))
 
 
-@router.get("/get/stadium")
+@router.get("/get/{stadium_name}")
 def get_stadium(
-    request: schema.FetchStadium,
+    stadium_name: str,
     db: orm.Session = Depends(db_session),
 ):
     stadium = (
         db.query(model.Stadium)
-        .filter_by(stadium_name=request.stadium_name)
+        .filter_by(stadium_name=stadium_name)
         .one_or_none()
     )
 
@@ -81,16 +83,17 @@ def get_stadium(
     )
 
 
-@router.get("/get/block")
+@router.get("/get/{stadium_name}/{block_name}")
 def get_block(
-    request: schema.FetchBlock,
+    stadium_name: str,
+    block_name: str,
     db: orm.Session = Depends(db_session),
 ):
     block = (
         db.query(model.Block)
         .filter_by(
-            name=request.block_name,
-            stadium_name=request.stadium_name,
+            name=block_name,
+            stadium_name=stadium_name,
         )
         .one_or_none()
     )
@@ -104,18 +107,21 @@ def get_block(
     )
 
 
-@router.get("/get/seat")
+@router.get("/get/{stadium_name}/{block_name}/seat")
 def get_seat(
-    request: schema.FetchSeat,
+    stadium_name: str,
+    block_name: str,
+    row_name: str,
+    seat_no: int,
     db: orm.Session = Depends(db_session),
 ):
     seat = (
         db.query(model.Seat)
         .filter_by(
-            row_name=request.row_name,
-            seat_no=request.seat_no,
-            block_name=request.block_name,
-            stadium_name=request.stadium_name,
+            row_name=row_name,
+            seat_no=seat_no,
+            block_name=block_name,
+            stadium_name=stadium_name,
         )
         .one_or_none()
     )

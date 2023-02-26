@@ -6,6 +6,8 @@ import sqlalchemy as sql
 import sqlalchemy.orm as orm
 from sqlalchemy.ext.declarative import declarative_base
 
+from .database import db_session
+
 
 # todo: there are different match types
 
@@ -28,12 +30,19 @@ def create_ticket_id():
     Returns new 6 digit TicketID
     """
     alphabet = string.ascii_letters + string.digits
+    databse = db_session()
+    session = next(databse)
 
     while True:
         ticket_id = "".join(secrets.choice(alphabet) for _ in range(6))
 
-        if Ticket.query.filter_by(id=ticket_id, entered=False).first():
+        if session.query(Ticket).filter_by(id=ticket_id).first():
             continue
+
+        try:
+            next(databse)
+        except StopIteration:
+            pass
 
         return ticket_id
 
