@@ -63,5 +63,6 @@ def login(
             detail="Incorrect Password, Try Again!",
         )
 
-    access_token = src.tokens.create_access_token(data={"sub": user.username})
+    access_token = src.tokens.create_access_token(
+        data={"sub": user.username}, expires_info={"minutes": 30})
     return {"status": "OK", "access_token": access_token, "token_type": "bearer"}
