@@ -5,11 +5,13 @@ from fastapi import Depends
 from models.database import db_session, orm
 from models import schema, model
 
+from .auth import current_user
+
 router = fastapi.APIRouter(prefix="/match", tags=["matches_manager"])
 
 
 @router.post("/create")
-def new_match(new_match: schema.NewMatch, db: orm.Session = Depends(db_session)):
+def new_match(new_match: schema.NewMatch, icc=Depends(current_user), db: orm.Session = Depends(db_session)):
 
     if db.query(model.Stadium).filter_by(name=new_match.stadium_name).one_or_none() is None:
         raise fastapi.exceptions.HTTPException(
@@ -79,7 +81,7 @@ def get_stadium_matches(
 
 @router.post("/end/{id}")
 def end_match(
-    id: int,
+    id: int, icc=Depends(current_user),
     db: orm.Session = Depends(db_session),
 ):
     # fixme soon

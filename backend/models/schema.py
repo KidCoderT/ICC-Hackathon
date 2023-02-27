@@ -60,5 +60,14 @@ class NewTicket(BaseModel):
     match_id: int
     stadium_name: str
     block: str
-    row_name: str
-    seat_no: str
+    seat_row: str
+    seat_no: int
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class TokenData(BaseModel):
+    username: Optional[str] = None

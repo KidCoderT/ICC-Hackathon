@@ -2,14 +2,14 @@ import enum
 import uuid
 import string
 import secrets
+from datetime import datetime
+
 import sqlalchemy as sql
 import sqlalchemy.orm as orm
 from sqlalchemy.ext.declarative import declarative_base
 
 from .database import db_session
 
-
-# todo: there are different match types
 
 __all__ = (
     "Base",
@@ -19,6 +19,7 @@ __all__ = (
     "Seat",
     "Match",
     "Ticket",
+    "IccUser",
 )
 
 
@@ -83,6 +84,8 @@ class Stadium(Base):  # type: ignore
     country = sql.Column(sql.String(255))
     pincode = sql.Column(sql.String(10))
 
+    blocks = orm.relationship("Block", backref="stadium")
+
 
 class Block(Base):  # type: ignore
     __tablename__ = "blocks"
@@ -93,6 +96,8 @@ class Block(Base):  # type: ignore
     y_offset = sql.Column(sql.Float)
 
     stadium_name = sql.Column(sql.String(255), sql.ForeignKey("stadiums.name"))
+    seats = orm.relationship("Seat", backref="block")
+
     __table_args__ = (
         sql.PrimaryKeyConstraint(
             "name", "stadium_name", name="block_primary_key"),
@@ -106,14 +111,10 @@ class Seat(Base):  # type: ignore
     row_no = sql.Column(sql.Integer)
     seat_no = sql.Column(sql.Integer, primary_key=True)
 
-    # tickets = orm.relationship("Ticket", backref="seat")
-
-    stadium_name = sql.Column(
-        sql.String(255), sql.ForeignKey("stadiums.name"), primary_key=True
-    )
-    block_name = sql.Column(
-        sql.String(2), sql.ForeignKey("blocks.name"), primary_key=True
-    )
+    stadium_name = sql.Column(sql.String(255), sql.ForeignKey(
+        "stadiums.name"), primary_key=True)
+    block_name = sql.Column(sql.String(2), sql.ForeignKey(
+        "blocks.name"), primary_key=True)
 
     __table_args__ = (
         sql.UniqueConstraint(
@@ -203,3 +204,41 @@ class Ticket(Base):  # type: ignore
             name="fk_ticket_block",
         ),
     )
+
+
+class TempTicket(Base):
+    __tablename__ = "temp_ticket"
+
+    id = sql.Column(sql.String(
+        36), default=lambda: str(uuid.uuid4()), primary_key=True, nullable=False)
+    person = sql.Column(sql.Integer)
+    match_id = sql.Column(sql.Integer)
+    
+    stadium_name = sql.Column(
+        sql.String(255),
+        sql.ForeignKey("stadiums.name"),
+        nullable=False
+    )
+    block_name = sql.Column(
+        sql.String(255),
+        sql.ForeignKey("blocks.name"),
+        nullable=False
+    )
+    seat_row = sql.Column(
+        sql.String(255),
+        sql.ForeignKey("seats.row_name"),
+        nullable=False
+    )
+    seat_no = sql.Column(
+        sql.Integer,
+        nullable=False
+    )
+
+    timestamp = sql.Column(sql.DateTime, default=datetime.utcnow)
+
+
+class IccUser(Base):  # type: ignore
+    __tablename__ = "icc_user"
+    username = sql.Column(sql.String(50), nullable=False,
+                          primary_key=True, unique=True)
+    password = sql.Column(sql.String(255))

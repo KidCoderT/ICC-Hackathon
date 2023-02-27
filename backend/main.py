@@ -13,7 +13,6 @@ dotenv.load_dotenv()
 
 from models import database
 from models.model import Base
-
 import routes
 
 app = fastapi.FastAPI()
@@ -37,10 +36,7 @@ def on_startup():
 app.include_router(routes.tickets_router)
 app.include_router(routes.stadium_router)
 app.include_router(routes.match_router)
-
-# @app.on_event("shutdown")
-# def shutdown_event():
-    # Server.server.close()
+app.include_router(routes.auth_router)
 
 
 if __name__ == "__main__":
