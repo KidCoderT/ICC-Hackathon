@@ -7,6 +7,7 @@ from datetime import datetime
 import sqlalchemy as sql
 import sqlalchemy.orm as orm
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.dialects.mysql import LONGBLOB
 
 from .database import db_session
 
@@ -63,7 +64,7 @@ class Person(Base):  # type: ignore
     __tablename__ = "person"
     id = sql.Column(sql.Integer, primary_key=True, autoincrement=True)
     ticket = orm.relationship("Ticket", uselist=False, backref="person")
-    image = sql.Column(sql.LargeBinary, nullable=True)
+    image = sql.Column(sql.LargeBinary(length=(2**32) - 1))
 
     gender = sql.Column(sql.Enum(GenderEnum, native_enum=True))
     nationality = sql.Column(sql.String(3))

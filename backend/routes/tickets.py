@@ -12,6 +12,7 @@ from jose import jwt, JWTError, ExpiredSignatureError
 import qrcode
 import fastapi
 from fastapi import Depends
+from sqlalchemy import LargeBinary
 
 from models.database import db_session, orm
 from models import schema, model
@@ -21,16 +22,18 @@ from src.email import smtp_server, SENDER_EMAIL
 from .auth import current_user
 
 router = fastapi.APIRouter(prefix="/ticket", tags=["tickets_manager"])
+max_binary_size = LargeBinary().length
 
 
-@router.post("/create")
+@router.post("/create/{json_info}")
 def create_ticket(
     image_file: fastapi.UploadFile,
-    json_info: str = fastapi.Form(),
+    json_info: str,
     server: SMTP_SSL = Depends(smtp_server),
     db: orm.Session = Depends(db_session)
 ):
-    is_valid_img = imghdr.what(image_file.filename, image_file.file.read())
+    image_bytes = image_file.file.read()
+    is_valid_img = imghdr.what(image_file.filename, image_bytes)
 
     if not is_valid_img:
         raise fastapi.exceptions.HTTPException(
@@ -38,152 +41,154 @@ def create_ticket(
             status_code=fastapi.status.HTTP_406_NOT_ACCEPTABLE,
         )
 
-    image_bytes = image_file.file.read()
+    if len(image_bytes) < (2**32) - 1:
+        raise fastapi.exceptions.HTTPException(
+            detail={"STATUS": "FILE TOO LARGE", "msg": "image is too large"},
+            status_code=fastapi.status.HTTP_406_NOT_ACCEPTABLE,
+        )
 
     new_ticket_info = schema.NewTicket(**json.loads(json_info))
 
-    print(new_ticket_info.__dict__)
+    stadium: Optional[model.Stadium] = db.query(model.Stadium).filter_by(
+        name=new_ticket_info.stadium_name).one_or_none()
 
-    # stadium: Optional[model.Stadium] = db.query(model.Stadium).filter_by(
-    #     name=new_ticket_info.stadium_name).one_or_none()
+    if stadium is None:
+        raise fastapi.exceptions.HTTPException(
+            detail={"STATUS": "NOT FOUND", "msg": "Stadium Not Found"},
+            status_code=fastapi.status.HTTP_404_NOT_FOUND,
+        )
 
-    # if stadium is None:
-    #     raise fastapi.exceptions.HTTPException(
-    #         detail={"STATUS": "NOT FOUND", "msg": "Stadium Not Found"},
-    #         status_code=fastapi.status.HTTP_404_NOT_FOUND,
-    #     )
+    block_names = [block.name for block in stadium.blocks]
 
-    # block_names = [block.name for block in stadium.blocks]
+    if new_ticket_info.block not in block_names:
+        raise fastapi.exceptions.HTTPException(
+            detail={"STATUS": "NOT FOUND", "msg": "Block Not Found"},
+            status_code=fastapi.status.HTTP_404_NOT_FOUND,
+        )
 
-    # if new_ticket_info.block not in block_names:
-    #     raise fastapi.exceptions.HTTPException(
-    #         detail={"STATUS": "NOT FOUND", "msg": "Block Not Found"},
-    #         status_code=fastapi.status.HTTP_404_NOT_FOUND,
-    #     )
+    block = stadium.blocks[block_names.index(new_ticket_info.block)]
+    seat = list(filter(lambda seat: seat.row_name ==
+                new_ticket_info.seat_row and seat.seat_no == new_ticket_info.seat_no, block.seats))
 
-    # block = stadium.blocks[block_names.index(new_ticket_info.block)]
-    # seat = list(filter(lambda seat: seat.row_name ==
-    #             new_ticket_info.seat_row and seat.seat_no == new_ticket_info.seat_no, block.seats))
+    if len(seat) != 1:
+        raise fastapi.exceptions.HTTPException(
+            detail={"STATUS": "NOT FOUND", "msg": "Seat Not Found"},
+            status_code=fastapi.status.HTTP_404_NOT_FOUND,
+        )
 
-    # if len(seat) != 1:
-    #     raise fastapi.exceptions.HTTPException(
-    #         detail={"STATUS": "NOT FOUND", "msg": "Seat Not Found"},
-    #         status_code=fastapi.status.HTTP_404_NOT_FOUND,
-    #     )
+    # Set the conditions for the query
+    conditions = {
+        "match_id": new_ticket_info.match_id,
+        "stadium_name": new_ticket_info.stadium_name,
+        "block_name": new_ticket_info.block,
+        "seat_row": new_ticket_info.seat_row,
+        "seat_no": new_ticket_info.seat_no,
+    }
 
-    # # Set the conditions for the query
-    # conditions = {
-    #     "match_id": new_ticket_info.match_id,
-    #     "stadium_name": new_ticket_info.stadium_name,
-    #     "block_name": new_ticket_info.block,
-    #     "seat_row": new_ticket_info.seat_row,
-    #     "seat_no": new_ticket_info.seat_no,
-    # }
+    query = db.query(model.Ticket).filter(
+        *[(getattr(model.Ticket, key) == conditions[key]) for key in conditions]
+    )
 
-    # query = db.query(model.Ticket).filter(
-    #     *[(getattr(model.Ticket, key) == conditions[key]) for key in conditions]
-    # )
+    if query.one_or_none() is not None:
+        return fastapi.exceptions.HTTPException(
+            status_code=fastapi.status.HTTP_400_BAD_REQUEST,
+            detail={
+                "status": "FAILED",
+                "message": "too slow someone is already booked that seat"
+            },
+        )
 
-    # if query.one_or_none() is not None:
-    #     return fastapi.exceptions.HTTPException(
-    #         status_code=fastapi.status.HTTP_400_BAD_REQUEST,
-    #         detail={
-    #             "status": "FAILED",
-    #             "message": "too slow someone is already booked that seat"
-    #         },
-    #     )
+    # Calculate the timestamp 30 minutes before the current time
+    cutoff_time = datetime.utcnow() - timedelta(minutes=30)
 
-    # # Calculate the timestamp 30 minutes before the current time
-    # cutoff_time = datetime.utcnow() - timedelta(minutes=30)
+    query = db.query(model.TempTicket).filter(
+        model.TempTicket.timestamp >= cutoff_time,
+        *[(getattr(model.TempTicket, key) == conditions[key]) for key in conditions]
+    )
 
-    # query = db.query(model.TempTicket).filter(
-    #     model.TempTicket.timestamp >= cutoff_time,
-    #     *[(getattr(model.TempTicket, key) == conditions[key]) for key in conditions]
-    # )
+    if query.one_or_none() is not None:
+        return fastapi.exceptions.HTTPException(
+            status_code=fastapi.status.HTTP_400_BAD_REQUEST,
+            detail={
+                "status": "FAILED",
+                "message": "too slow someone is on the verge of booking that seat"
+            },
+        )
 
-    # if query.one_or_none() is not None:
-    #     return fastapi.exceptions.HTTPException(
-    #         status_code=fastapi.status.HTTP_400_BAD_REQUEST,
-    #         detail={
-    #             "status": "FAILED",
-    #             "message": "too slow someone is on the verge of booking that seat"
-    #         },
-    #     )
+    # add response if input wrong
 
-    # # add response if input wrong
+    person = model.Person(
+        gender=new_ticket_info.gender,
+        nationality=new_ticket_info.nationality,
+        first_name=new_ticket_info.first_name,
+        last_name=new_ticket_info.last_name,
+        dob=new_ticket_info.dob,
+        email=new_ticket_info.email,
+        phone=new_ticket_info.phone,
+        image=image_bytes
+    )
 
-    # person = model.Person(
-    #     gender=new_ticket_info.gender,
-    #     nationality=new_ticket_info.nationality,
-    #     first_name=new_ticket_info.first_name,
-    #     last_name=new_ticket_info.last_name,
-    #     dob=new_ticket_info.dob,
-    #     email=new_ticket_info.email,
-    #     phone=new_ticket_info.phone,
-    #     image=image_bytes
-    # )
+    db.add(person)
+    db.commit()
+    db.refresh(person)
 
-    # db.add(person)
-    # db.commit()
-    # db.refresh(person)
+    temp_ticket = model.TempTicket(
+        person=person.id,
+        match_id=new_ticket_info.match_id,
+        stadium_name=new_ticket_info.stadium_name,
+        block_name=new_ticket_info.block,
+        seat_row=new_ticket_info.seat_row,
+        seat_no=new_ticket_info.seat_no
+    )
 
-    # temp_ticket = model.TempTicket(
-    #     person=person.id,
-    #     match_id=new_ticket_info.match_id,
-    #     stadium_name=new_ticket_info.stadium_name,
-    #     block_name=new_ticket_info.block,
-    #     seat_row=new_ticket_info.seat_row,
-    #     seat_no=new_ticket_info.seat_no
-    # )
+    db.add(temp_ticket)
+    db.commit()
+    db.refresh(temp_ticket)
 
-    # db.add(temp_ticket)
-    # db.commit()
-    # db.refresh(temp_ticket)
+    token = tokens.create_access_token(
+        {"temp_ticket": temp_ticket.id}, {"minutes": 30})
 
-    # token = tokens.create_access_token(
-    #     {"temp_ticket": temp_ticket.id}, {"minutes": 30})
+    subject = "verify token"
+    message = f'Hi please verify you account<br>\
+        <form action="https://kvkpop-organic-eureka-j666769vx94h594v-8080.preview.app.github.dev/ticket/generate" method="post">\
+            <input type="hidden" name="token" value="{token}">\
+            <input type="submit" value="Click Here">\
+        </form>'
 
-    # subject = "verify token"
-    # message = f'Hi please verify you account<br>\
-    #     <form action="https://kvkpop-didactic-goldfish-666656w69p5hrxv7-8080.preview.app.github.dev/ticket/generate" method="post">\
-    #         <input type="hidden" name="token" value="{token}">\
-    #         <input type="submit" value="Click Here">\
-    #     </form>'
+    msg = MIMEMultipart()
+    msg["From"] = SENDER_EMAIL
+    msg["To"] = person.email
+    msg["Subject"] = subject
 
-    # msg = MIMEMultipart()
-    # msg["From"] = SENDER_EMAIL
-    # msg["To"] = person.email
-    # msg["Subject"] = subject
+    text = MIMEText(message, "html")
+    msg.attach(text)
 
-    # text = MIMEText(message, "html")
-    # msg.attach(text)
+    try:
+        server.sendmail(SENDER_EMAIL, person.email, msg.as_string())
+    except SMTPRecipientsRefused as exc:
+        db.delete(person)
+        db.delete(temp_ticket)
+        db.commit()
 
-    # try:
-    #     server.sendmail(SENDER_EMAIL, person.email, msg.as_string())
-    # except SMTPRecipientsRefused as exc:
-    #     db.delete(person)
-    #     db.delete(temp_ticket)
-    #     db.commit()
+        return fastapi.exceptions.HTTPException(
+            status_code=fastapi.status.HTTP_400_BAD_REQUEST,
+            detail={
+                "status": "FAILED",
+                "message": (
+                    f"because of {str(exc)} We were not able to send an "
+                    "email to u and hence creation of your ticket failed! "
+                    "please try again after some time!!"
+                ),
+            },
+        )
 
-    #     return fastapi.exceptions.HTTPException(
-    #         status_code=fastapi.status.HTTP_400_BAD_REQUEST,
-    #         detail={
-    #             "status": "FAILED",
-    #             "message": (
-    #                 f"because of {str(exc)} We were not able to send an "
-    #                 "email to u and hence creation of your ticket failed! "
-    #                 "please try again after some time!!"
-    #             ),
-    #         },
-    #     )
-
-    # return fastapi.responses.JSONResponse(
-    #     content={
-    #         "status": "VERIFICATION SENT",
-    #         "msg": "Please check your email to verify its you!"
-    #     },
-    #     status_code=fastapi.status.HTTP_201_CREATED,
-    # )
+    return fastapi.responses.JSONResponse(
+        content={
+            "status": "VERIFICATION SENT",
+            "msg": "Please check your email to verify its you!"
+        },
+        status_code=fastapi.status.HTTP_201_CREATED,
+    )
 
 
 @router.post("/generate")
