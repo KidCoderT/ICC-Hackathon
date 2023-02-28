@@ -153,6 +153,8 @@ class Ticket(Base):  # type: ignore
     match_id = sql.Column(sql.Integer, sql.ForeignKey(
         "matches.id"), nullable=False)
 
+    qr_code = sql.Column(sql.Text, nullable=True)
+
     timestamps = sql.Column(sql.JSON)
 
     person_id = sql.Column(
@@ -213,7 +215,7 @@ class TempTicket(Base):
         36), default=lambda: str(uuid.uuid4()), primary_key=True, nullable=False)
     person = sql.Column(sql.Integer)
     match_id = sql.Column(sql.Integer)
-    
+
     stadium_name = sql.Column(
         sql.String(255),
         sql.ForeignKey("stadiums.name"),

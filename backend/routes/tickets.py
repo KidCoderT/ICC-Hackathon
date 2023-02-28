@@ -1,15 +1,17 @@
+import base64
+import io
+import json
 from typing import Optional
 from datetime import datetime, timedelta
-from smtplib import SMTPRecipientsRefused, SMTP_SSL
-from jose import jwt, JWTError, ExpiredSignatureError
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
+from smtplib import SMTPRecipientsRefused, SMTP_SSL
+from jose import jwt, JWTError, ExpiredSignatureError
 
 import qrcode
 import fastapi
-from fastapi import Depends
-import rsa
+from fastapi import Depends, File
 
 from models.database import db_session, orm
 from models import schema, model
@@ -119,7 +121,8 @@ def create_ticket(new_ticket_info: schema.NewTicket, server: SMTP_SSL = Depends(
     db.commit()
     db.refresh(temp_ticket)
 
-    token = tokens.create_access_token({"temp_ticket": temp_ticket.id})
+    token = tokens.create_access_token(
+        {"temp_ticket": temp_ticket.id}, {"minutes": 30})
 
     subject = "verify token"
     message = f'Hi please verify you account<br>\
@@ -216,6 +219,26 @@ def generate_ticket(token: str = fastapi.Form(), server: SMTP_SSL = Depends(smtp
     db.commit()
     db.refresh(new_ticket)
 
+    # create qr code
+    combined_data = tokens.create_access_token(
+        {"id": new_ticket.id, "secret": new_ticket.secret_id, "ticket_id": new_ticket.ticket_id})
+
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(combined_data)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    # qr_code = base64.b64encode(buffer.getvalue()).decode()
+
+    # new_ticket.qrcode = str(img_data)
+    # db.commit()
+
     # create email
 
     subject = "QRCODE"
@@ -229,24 +252,8 @@ def generate_ticket(token: str = fastapi.Form(), server: SMTP_SSL = Depends(smtp
     text = MIMEText(message)
     msg.attach(text)
 
-    # create qr code
-    combined_data = rsa.encrypt(
-        f"{new_ticket.id}|{new_ticket.secret_id}|{new_ticket.ticket_id}".encode('utf8'), tokens.pub_key)
-
-    qr = qrcode.QRCode(version=3, box_size=11, border=5)
-    qr.add_data(combined_data)
-    qr.make(fit=True)
-    img = qr.make_image(fill_color="black", back_color="white")
-
-    img_file = f"qrcodes/{new_ticket.secret_id}.png"
-    img.save(img_file)
-
-    # save qrcode to mysql
-
-    with open(img_file, 'rb') as f:
-        img_data = f.read()
-        image = MIMEImage(img_data, name="my_qr_code.png")
-        msg.attach(image)
+    image = MIMEImage(buf.getvalue(), name="my_qr_code.png")
+    msg.attach(image)
 
     # send email
 
@@ -268,6 +275,57 @@ def verify_ticket(
     # icc=Depends(current_user),
     db: orm.Session = Depends(db_session)
 ):
-    print(token, rsa.decrypt(bytes(token, "utf-8"), tokens.priv_key).decode('utf8'))
+    data = tokens.decrypt_token(token)
+
+    ticket: Optional[model.Ticket] = db.query(model.Ticket).filter_by(
+        id=data["id"], ticket_id=data["ticket_id"], secret_id=data["secret"]).one_or_none()
+
+    if ticket is None:
+        raise fastapi.exceptions.HTTPException(
+            status_code=fastapi.status.HTTP_404_NOT_FOUND,
+            detail={
+                "status": "DATA INVALID",
+                "message": "Token Ticket Not Found"
+            },
+        )
+
+    match: Optional[model.Match] = db.query(
+        model.Match).filter_by(id=ticket.match_id).one_or_none()
+
+    if match is None:
+        raise fastapi.exceptions.HTTPException(
+            status_code=fastapi.status.HTTP_404_NOT_FOUND,
+            detail={
+                "status": "DATA INVALID",
+                "message": "Game Match Found"
+            },
+        )
+
+    if match.finished:
+        raise fastapi.exceptions.HTTPException(
+            status_code=fastapi.status.HTTP_406_NOT_ACCEPTABLE,
+            detail={
+                "status": "MATCH OVER",
+                "message": "Match Over. Ticket No Longer Valid"
+            },
+        )
+
+    timestamps = json.loads(ticket.timestamps)
+
+    if len(timestamps) > match.match_format.value:
+        raise fastapi.exceptions.HTTPException(
+            status_code=fastapi.status.HTTP_406_NOT_ACCEPTABLE,
+            detail={
+                "status": "TOO MANY TIMES",
+                "message": "Your validation of ticket is no more"
+            },
+        )
+
+    timestamps.append(str(datetime.utcnow()))
+    ticket.timestamps = json.dumps(timestamps)
+    db.commit()
+
+    #
+
 
 # resend code
