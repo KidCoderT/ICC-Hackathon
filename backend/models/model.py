@@ -49,9 +49,9 @@ def create_ticket_id():
 
 
 class MatchEnum(enum.Enum):
-    T20 = 3
-    ODI = 5
-    TEST = 8
+    T20 = "t20"
+    ODI = "odi"
+    TEST = "test"
 
 
 class GenderEnum(enum.Enum):
@@ -63,6 +63,7 @@ class Person(Base):  # type: ignore
     __tablename__ = "person"
     id = sql.Column(sql.Integer, primary_key=True, autoincrement=True)
     ticket = orm.relationship("Ticket", uselist=False, backref="person")
+    image = sql.Column(sql.LargeBinary, nullable=True)
 
     gender = sql.Column(sql.Enum(GenderEnum, native_enum=True))
     nationality = sql.Column(sql.String(3))
@@ -72,7 +73,6 @@ class Person(Base):  # type: ignore
 
     email = sql.Column(sql.String(255))
     phone = sql.Column(sql.String(20))
-    verified = sql.Column(sql.Boolean(), default=False)
 
     ticket = orm.relationship("Ticket", back_populates="person", uselist=False)
 
@@ -139,6 +139,9 @@ class Match(Base):  # type: ignore
     stadium = orm.relationship("Stadium", backref="matches")
     tickets = orm.relationship("Ticket", backref="match")
 
+    country_1 = sql.Column(sql.String(3))
+    country_2 = sql.Column(sql.String(3))
+
     match_format = sql.Column(sql.Enum(MatchEnum, native_enum=True))
 
     finished = sql.Column(sql.Boolean(), default=False)
@@ -153,7 +156,7 @@ class Ticket(Base):  # type: ignore
     match_id = sql.Column(sql.Integer, sql.ForeignKey(
         "matches.id"), nullable=False)
 
-    qr_code = sql.Column(sql.Text, nullable=True)
+    qrcode = sql.Column(sql.LargeBinary, nullable=True)
 
     timestamps = sql.Column(sql.JSON)
 
@@ -213,8 +216,8 @@ class TempTicket(Base):
 
     id = sql.Column(sql.String(
         36), default=lambda: str(uuid.uuid4()), primary_key=True, nullable=False)
-    person = sql.Column(sql.Integer)
-    match_id = sql.Column(sql.Integer)
+    person = sql.Column(sql.Integer, sql.ForeignKey("person.id"))
+    match_id = sql.Column(sql.Integer, sql.ForeignKey("matches.id"))
 
     stadium_name = sql.Column(
         sql.String(255),

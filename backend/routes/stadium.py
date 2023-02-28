@@ -12,7 +12,7 @@ router = fastapi.APIRouter(prefix="/stadium", tags=["stadiums_manager"])
 
 
 @router.post("/create")
-def new_stadium(new_stadium: schema.NewStadium, icc = Depends(current_user), db: orm.Session = Depends(db_session)):
+def new_stadium(new_stadium: schema.NewStadium, icc=Depends(current_user), db: orm.Session = Depends(db_session)):
     stadium = model.Stadium(
         name=new_stadium.name,
         country=new_stadium.country,
