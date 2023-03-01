@@ -64,7 +64,7 @@ class Person(Base):  # type: ignore
     __tablename__ = "person"
     id = sql.Column(sql.Integer, primary_key=True, autoincrement=True)
     ticket = orm.relationship("Ticket", uselist=False, backref="person")
-    image = sql.Column(sql.LargeBinary(length=(2**32) - 1))
+    img_path = sql.Column(sql.String(255))
 
     gender = sql.Column(sql.Enum(GenderEnum, native_enum=True))
     nationality = sql.Column(sql.String(3))
@@ -76,6 +76,8 @@ class Person(Base):  # type: ignore
     phone = sql.Column(sql.String(20))
 
     ticket = orm.relationship("Ticket", back_populates="person", uselist=False)
+    # password = sql.Column(sql.String(255))
+    # tickets = orm.relationship("Ticket", back_populates="person")
 
 
 class Stadium(Base):  # type: ignore

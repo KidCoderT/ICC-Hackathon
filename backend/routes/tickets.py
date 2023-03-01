@@ -41,12 +41,6 @@ def create_ticket(
             status_code=fastapi.status.HTTP_406_NOT_ACCEPTABLE,
         )
 
-    if len(image_bytes) < (2**32) - 1:
-        raise fastapi.exceptions.HTTPException(
-            detail={"STATUS": "FILE TOO LARGE", "msg": "image is too large"},
-            status_code=fastapi.status.HTTP_406_NOT_ACCEPTABLE,
-        )
-
     new_ticket_info = schema.NewTicket(**json.loads(json_info))
 
     stadium: Optional[model.Stadium] = db.query(model.Stadium).filter_by(
@@ -115,7 +109,9 @@ def create_ticket(
             },
         )
 
-    # add response if input wrong
+    file_path = f"photos/{new_ticket_info.first_name}-{new_ticket_info.last_name}.{image_file.filename.split('.')[-1]}"
+    with open(file_path, "wb") as buffer:
+        buffer.write(image_bytes)
 
     person = model.Person(
         gender=new_ticket_info.gender,
@@ -125,7 +121,7 @@ def create_ticket(
         dob=new_ticket_info.dob,
         email=new_ticket_info.email,
         phone=new_ticket_info.phone,
-        image=image_bytes
+        img_path=file_path
     )
 
     db.add(person)
@@ -295,8 +291,8 @@ def generate_ticket(token: str = fastapi.Form(), server: SMTP_SSL = Depends(smtp
 # verify qr code
 @router.get("/view")
 def view_ticket(
-    token: str,
-    # icc=Depends(current_user),
+    token: str, response: fastapi.Response,
+    icc=Depends(current_user),
     db: orm.Session = Depends(db_session)
 ):
     data = tokens.decrypt_token(token)
@@ -343,12 +339,71 @@ def view_ticket(
             },
         )
 
-    # timestamps = json.loads(ticket.timestamps)
-    # timestamps.append(str(datetime.utcnow()))
-    # ticket.timestamps = json.dumps(timestamps)
-    # db.commit()
+    content_type = "image/jpeg" if ticket.person.img_path.endswith(
+        ".jpg") else "image/png"
+    response.headers["Content-Type"] = content_type
 
-    return fastapi.responses.Response(content=ticket.person.image, media_type="image/png")
+    # read the contents of the file and return them as a response
+    with open(ticket.person.img_path, mode="rb") as file:
+        contents = file.read()
+
+    return fastapi.Response(contents, media_type=content_type)
 
 
-# resend code
+@router.post("/verify")
+def verify_ticket(
+    token: str,
+    icc=Depends(current_user),
+    db: orm.Session = Depends(db_session)
+):
+
+    data = tokens.decrypt_token(token)
+
+    ticket: Optional[model.Ticket] = db.query(model.Ticket).filter_by(
+        id=data["id"], ticket_id=data["ticket_id"], secret_id=data["secret"]).one_or_none()
+
+    if ticket is None:
+        raise fastapi.exceptions.HTTPException(
+            status_code=fastapi.status.HTTP_404_NOT_FOUND,
+            detail={
+                "status": "DATA INVALID",
+                "message": "Token Ticket Not Found"
+            },
+        )
+
+    timestamps = json.loads(ticket.timestamps)
+    timestamps.append(str(datetime.utcnow()))
+    ticket.timestamps = json.dumps(timestamps)
+    db.commit()
+
+    return fastapi.responses.JSONResponse(
+        content={
+            "status": "UPDATED",
+            "msg": "Ticket Timestamp Updated"
+        },
+        status_code=fastapi.status.HTTP_200_OK,
+    )
+
+
+# resend qrcode
+# @router.post("/resend")
+# def resend_qrcode(, server: SMTP_SSL = Depends(smtp_server)):
+#     subject = "QRCODE"
+#     message = 'Here is your qrcode'
+
+#     msg = MIMEMultipart()
+#     msg["From"] = SENDER_EMAIL
+#     msg["To"] = person.email
+#     msg["Subject"] = subject
+
+#     text = MIMEText(message)
+#     msg.attach(text)
+
+#     image = MIMEImage(buf.getvalue(), name="my_qr_code.png")
+#     msg.attach(image)
+
+#     # send email
+
+#     server.sendmail(SENDER_EMAIL, person.email, msg.as_string())
+
+# send through mobile

@@ -32,6 +32,8 @@ class NewMatch(BaseModel):
     start_time: datetime
     stadium_name: str
     match_format: MatchEnum
+    country_1: str
+    country_2: str
 
 
 class Match(BaseModel):

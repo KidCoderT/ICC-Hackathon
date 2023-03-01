@@ -23,6 +23,8 @@ def new_match(new_match: schema.NewMatch, icc=Depends(current_user), db: orm.Ses
         start_time=new_match.start_time,
         stadium_name=new_match.stadium_name,
         match_format=new_match.match_format,
+        country_1=new_match.country_1,
+        country_2=new_match.country_2
     )
 
     db.add(match)
