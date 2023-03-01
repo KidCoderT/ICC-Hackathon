@@ -2,7 +2,7 @@ import React from "react";
 import * as Chakra from "@chakra-ui/react";
 import { ChevronDownIcon, ViewIcon } from "@chakra-ui/icons";
 
-blocks = [
+let blocks = [
   { label: "", rows: [{ name: "", seats: [true, false] }] },
   { label: "", rows: [{ name: "", seats: [true, false] }] },
   { label: "", rows: [{ name: "", seats: [true, false] }] },
