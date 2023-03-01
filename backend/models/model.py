@@ -4,10 +4,9 @@ import string
 import secrets
 from datetime import datetime
 
-import sqlalchemy as sql
-import sqlalchemy.orm as orm
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.dialects.mysql import LONGBLOB
+import sqlalchemy.orm as orm
+import sqlalchemy as sql
 
 from .database import db_session
 
@@ -75,9 +74,8 @@ class Person(Base):  # type: ignore
     email = sql.Column(sql.String(255))
     phone = sql.Column(sql.String(20))
 
-    ticket = orm.relationship("Ticket", back_populates="person", uselist=False)
-    # password = sql.Column(sql.String(255))
-    # tickets = orm.relationship("Ticket", back_populates="person")
+    booked_tickets = orm.relationship("Ticket", backref="user")
+    password = sql.Column(sql.String(255))
 
 
 class Stadium(Base):  # type: ignore
@@ -149,6 +147,10 @@ class Match(Base):  # type: ignore
 
     finished = sql.Column(sql.Boolean(), default=False)
 
+    @property
+    def start_time_timestamp(self):
+        return int(self.start_time.timestamp())
+
 
 class Ticket(Base):  # type: ignore
     __tablename__ = "tickets"
@@ -163,12 +165,7 @@ class Ticket(Base):  # type: ignore
 
     timestamps = sql.Column(sql.JSON)
 
-    person_id = sql.Column(
-        sql.Integer,
-        sql.ForeignKey("person.id"),
-        unique=True,
-        nullable=False,
-    )
+    person_id = sql.Column(sql.Integer, sql.ForeignKey('person.id'))
 
     stadium_name = sql.Column(
         sql.String(255),
@@ -192,8 +189,6 @@ class Ticket(Base):  # type: ignore
         sql.Integer,
         nullable=False,
     )
-
-    person = orm.relationship("Person", back_populates="ticket")
 
     __table_args__ = (
         sql.ForeignKeyConstraint(

@@ -42,6 +42,37 @@ class Match(BaseModel):
     start_time: datetime
     stadium_name: str
     finished: bool
+    country_1: str
+    country_2: str
+
+
+class UpcommingMatch(BaseModel):
+    id: int
+    match_format: MatchEnum
+    start_time: str
+    stadium_name: str
+    finished: bool
+    booked_seats: int
+    total_seats: int
+
+
+class BlockRowInfo(BaseModel):
+    name: str
+    seats: List[bool]
+
+
+class BookSeatBlock(BaseModel):
+    name: str
+    rows: List[BlockRowInfo]
+
+
+class BookMatchSeat(BaseModel):
+    id: int
+    match_format: MatchEnum
+    stadium_name: str
+    country1: str
+    country2: str
+    blocks: list[BookSeatBlock]
 
 
 class FetchStadiumMatches(BaseModel):
