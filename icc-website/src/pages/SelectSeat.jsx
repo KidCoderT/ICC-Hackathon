@@ -3,16 +3,38 @@ import * as Chakra from "@chakra-ui/react";
 import { ChevronDownIcon, ViewIcon } from "@chakra-ui/icons";
 
 let blocks = [
-  { label: "", rows: [{ name: "", seats: [true, false] }] },
-  { label: "", rows: [{ name: "", seats: [true, false] }] },
-  { label: "", rows: [{ name: "", seats: [true, false] }] },
-  { label: "", rows: [{ name: "", seats: [true, false] }] },
-  { label: "", rows: [{ name: "", seats: [true, false] }] },
-  { label: "", rows: [{ name: "", seats: [true, false] }] },
+  {
+    label: "AA",
+    rows: [
+      { name: "a", seats: [true, false] },
+      { name: "b", seats: [true, true] },
+      { name: "c", seats: [false, false] },
+    ],
+  },
+  {
+    label: "BB",
+    rows: [
+      { name: "a", seats: [true, false, false] },
+      { name: "b", seats: [true, true, true] },
+      { name: "c", seats: [false, false, true] },
+      { name: "d", seats: [false, true, true] },
+    ],
+  },
 ];
 
 const SelectSeat = () => {
   const { isOpen, onOpen, onClose } = Chakra.useDisclosure();
+
+  const [block, setBlock] = React.useState("");
+  const [blockIndex, setBlockIndex] = React.useState(-1);
+  const [seatRowName, setSeatRowName] = React.useState("");
+  const [seatRow, setSeatRow] = React.useState(-1);
+  const [seatNo, setSeatNo] = React.useState(-1);
+
+  React.useEffect(() => {
+    console.log(block, blockIndex);
+    console.log(seatRow, seatNo);
+  }, [block, blockIndex, seatRow, seatNo]);
 
   return (
     <>
@@ -30,12 +52,26 @@ const SelectSeat = () => {
         </Chakra.ModalContent>
       </Chakra.Modal>
 
-      <Chakra.Box as="main" background="blackAlpha.900" minH={"100vh"}>
-        <Chakra.Container color="whiteAlpha.800" maxW="80%" py={10}>
-          <Chakra.Heading size="2xl" textAlign={"center"}>
-            Seat Selection: <div>Chinna Swami Stadium</div>
+      <Chakra.Flex
+        alignItems={"center"}
+        justifyContent="center"
+        as="main"
+        color="whiteAlpha.800"
+        background="blackAlpha.900"
+        minH={"100vh"}
+      >
+        <Chakra.Box
+          minW="400px"
+          maxW="600px"
+          boxShadow="xs"
+          bg="black"
+          py={10}
+          px={5}
+          borderRadius="xl"
+        >
+          <Chakra.Heading size="lg" textAlign={"center"}>
+            Chinna Swami Stadium
           </Chakra.Heading>
-
           <Chakra.Box
             borderRadius="full"
             h={1}
@@ -61,31 +97,126 @@ const SelectSeat = () => {
             </Chakra.Heading>
           </Chakra.Flex>
 
-          <Chakra.IconButton
-            colorScheme="whiteAlpha"
+          <Chakra.Flex
+            alignItems={"center"}
+            justifyContent="space-between"
+            my={3}
+          >
+            <Chakra.Heading size="md" mr={20}>
+              Stadium Block:{" "}
+            </Chakra.Heading>
+            <Chakra.Menu>
+              <Chakra.MenuButton
+                flexGrow={1}
+                as={Chakra.Button}
+                rightIcon={<ChevronDownIcon />}
+                colorScheme="whiteAlpha"
+                variant="outline"
+              >
+                {block || "Choose..."}
+              </Chakra.MenuButton>
+
+              <Chakra.MenuList colorScheme="whiteAlpha" variant="outline">
+                {blocks.map((item, key) => (
+                  <Chakra.MenuItem
+                    key={key}
+                    color="black"
+                    onClick={() => {
+                      setBlock(item.label);
+                      setBlockIndex(key);
+                      setSeatRowName("");
+                      setSeatRow(-1);
+                      setSeatNo(-1);
+                    }}
+                  >
+                    {item.label}
+                  </Chakra.MenuItem>
+                ))}
+              </Chakra.MenuList>
+            </Chakra.Menu>
+          </Chakra.Flex>
+
+          {block.length > 0 ? (
+            <>
+              <Chakra.Box
+                borderRadius="full"
+                h={0.5}
+                w="100%"
+                my={3}
+                bg="whiteAlpha.700"
+              />
+              <Chakra.Flex
+                alignItems={"center"}
+                justifyContent="center"
+                mb={3}
+                flexDir="column"
+              >
+                <Chakra.Heading size="lg" mb={1}>
+                  Seats
+                </Chakra.Heading>
+                <Chakra.Text size="sm" mb={2}>
+                  Row Name: {seatRowName || "NA"}, Seat No:{" "}
+                  {seatNo > 0 ? seatNo : "NA"}
+                </Chakra.Text>
+
+                {blocks[blockIndex].rows.map((row, row_idx) => (
+                  <Chakra.Box key={row_idx}>
+                    {row.seats.map((disabled, idx) => (
+                      <Chakra.Button
+                        w={4}
+                        h={4}
+                        m={2}
+                        bg="red"
+                        key={idx}
+                        isDisabled={disabled}
+                        onClick={() => {
+                          setSeatRowName(row.name);
+                          setSeatRow(row_idx);
+                          setSeatNo(idx + 1);
+                        }}
+                        _hover={{
+                          bg: !disabled ? "whiteAlpha.900" : "red",
+                        }}
+                        _active={{
+                          bg: "blue",
+                        }}
+                        isActive={seatRowName === row.name && seatNo == idx + 1}
+                      />
+                    ))}
+                  </Chakra.Box>
+                ))}
+              </Chakra.Flex>
+              <Chakra.Box
+                borderRadius="full"
+                h={0.5}
+                w="100%"
+                my={3}
+                bg="whiteAlpha.700"
+              />
+            </>
+          ) : (
+            <></>
+          )}
+
+          <Chakra.Button
+            rightIcon={<ViewIcon />}
+            colorScheme="blue"
             variant="outline"
-            icon={<ViewIcon />}
             onClick={onOpen}
-          />
-
-          {/* Block */}
-          <Chakra.Menu>
-            <Chakra.MenuButton
-              as={Chakra.Button}
-              rightIcon={<ChevronDownIcon />}
-              colorScheme="whiteAlpha"
-              variant="outline"
-            >
-              Select
-            </Chakra.MenuButton>
-            <Chakra.MenuList>{}</Chakra.MenuList>
-          </Chakra.Menu>
-
-          {/* seats */}
-
-          {/* seat viewing */}
-        </Chakra.Container>
-      </Chakra.Box>
+            w="100%"
+          >
+            View Stadium
+          </Chakra.Button>
+          <Chakra.Button
+            colorScheme="green"
+            // On click go to login
+            w="100%"
+            mt={2}
+          >
+            BOOK NOW
+          </Chakra.Button>
+        </Chakra.Box>
+      </Chakra.Flex>
     </>
   );
 };
