@@ -4,7 +4,6 @@ import { ChevronDownIcon, ViewIcon } from "@chakra-ui/icons";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-
 let blocks = [
   {
     label: "AA",
@@ -33,7 +32,6 @@ const SelectSeat = () => {
   const [seatRowName, setSeatRowName] = React.useState("");
   const [seatRow, setSeatRow] = React.useState(-1);
   const [seatNo, setSeatNo] = React.useState(-1);
-
 
   const threeRef = useRef();
   const [camera, setCamera] = useState();
@@ -84,9 +82,8 @@ const SelectSeat = () => {
       setRenderer(newRenderer);
       setControls(newControls);
       setScene(newScene);
-    
-  } 
-  [block, blockIndex, seatRow, seatNo]);
+    }
+  }, [block, blockIndex, seatRow, seatNo]);
 
   return (
     <>
@@ -97,7 +94,6 @@ const SelectSeat = () => {
           <Chakra.ModalCloseButton />
           <Chakra.ModalBody background={"black"}>
             {/* Seat Viewing */}
-            
           </Chakra.ModalBody>
           <Chakra.ModalFooter textAlign={"center"}>
             <Chakra.Heading size={"md"}>Block: AA, Seat: NAN</Chakra.Heading>
