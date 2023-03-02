@@ -203,6 +203,13 @@ const BookTicket = () => {
               variant="outline"
               mt={3}
             /> */}
+            {/*Image Path*/}
+            <Chakra.Flex direction="column" mb={3} px={3}>
+            <Chakra.FormLabel htmlFor="image-upload" textAlign="center">Upload Image</Chakra.FormLabel>
+            <Chakra.Input type="file" id="image-upload" accept="image/*" />
+            </Chakra.Flex>
+
+
 
             {/* Password - Hashed */}
             <PasswordInput value={password} onChange={setPassword} />
