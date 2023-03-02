@@ -1,6 +1,9 @@
 import React from "react";
 import * as Chakra from "@chakra-ui/react";
 import { ChevronDownIcon, ViewIcon } from "@chakra-ui/icons";
+import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+
 
 let blocks = [
   {
@@ -31,10 +34,59 @@ const SelectSeat = () => {
   const [seatRow, setSeatRow] = React.useState(-1);
   const [seatNo, setSeatNo] = React.useState(-1);
 
+
+  const threeRef = useRef();
+  const [camera, setCamera] = useState();
+  const [renderer, setRenderer] = useState();
+  const [controls, setControls] = useState();
+  const [scene, setScene] = useState();
+  const [model, setModel] = useState();
+
   React.useEffect(() => {
     console.log(block, blockIndex);
     console.log(seatRow, seatNo);
-  }, [block, blockIndex, seatRow, seatNo]);
+    if (threeRef.current) {
+      // adding a new scene
+      const newScene = new THREE.Scene();
+
+      // adding a new camera
+      const newCamera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+      newCamera.position.z = 5;
+
+      // creating a new renderer
+      const newRenderer = new THREE.WebGLRenderer();
+      newRenderer.setSize(window.innerWidth, window.innerHeight);
+      threeRef.current.appendChild(newRenderer.domElement);
+
+      //new controls
+      const newControls = new OrbitControls(newCamera, newRenderer.domElement);
+      newControls.enableDamping = true;
+      newControls.dampingFactor = 0.05;
+      newControls.screenSpacePanning = false;
+      newControls.minDistance = 1;
+      newControls.maxDistance = 50;
+      newControls.maxPolarAngle = Math.PI / 2;
+
+      // loading the 3D model
+      const loader = new THREE.GLTFLoader();
+      loader.load("/path/to/your/3d-model.glb", (gltf) => {
+        const newModel = gltf.scene;
+        newScene.add(newModel);
+        setModel(newModel);
+      });
+
+      setCamera(newCamera);
+      setRenderer(newRenderer);
+      setControls(newControls);
+      setScene(newScene);
+    
+  } 
+  [block, blockIndex, seatRow, seatNo]);
 
   return (
     <>
@@ -45,6 +97,7 @@ const SelectSeat = () => {
           <Chakra.ModalCloseButton />
           <Chakra.ModalBody background={"black"}>
             {/* Seat Viewing */}
+            
           </Chakra.ModalBody>
           <Chakra.ModalFooter textAlign={"center"}>
             <Chakra.Heading size={"md"}>Block: AA, Seat: NAN</Chakra.Heading>
