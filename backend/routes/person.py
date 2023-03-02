@@ -11,7 +11,7 @@ from jose import jwt, JWTError, ExpiredSignatureError
 
 import qrcode
 import fastapi
-from fastapi import Depends
+from fastapi import Depends, File, UploadFile
 from sqlalchemy import LargeBinary
 
 from models.database import db_session, orm
@@ -26,8 +26,8 @@ router = fastapi.APIRouter(prefix="/person", tags=["people_manager"])
 
 @router.post("/create/{json_info}")
 def create_person(
-    image_file: fastapi.UploadFile,
     json_info: str,
+    image_file: UploadFile,
     server: SMTP_SSL = Depends(smtp_server),
     db: orm.Session = Depends(db_session)
 ):
@@ -73,7 +73,7 @@ def create_person(
 
     subject = "verify account"
     message = f'Hi please verify you account<br>\
-        <form action="https://kvkpop-organic-eureka-j666769vx94h594v-8080.preview.app.github.dev/person/verify" method="post">\
+        <form action="https://kvkpop-probable-potato-w66656x6v4vf5wgq-8080.preview.app.github.dev/person/verify" method="post">\
             <input type="hidden" name="token" value="{token}">\
             <input type="submit" value="Click Here">\
         </form>'
@@ -154,7 +154,7 @@ def verify_person(token: str = fastapi.Form(), db: orm.Session = Depends(db_sess
 @router.post("/verify/resend")
 def resend_verification(first_name: str, last_name: str, password: str, server: SMTP_SSL = Depends(smtp_server), db: orm.Session = Depends(db_session)):
     person: Optional[model.Person] = db.query(model.Person).filter_by(
-        first_name=first_name, last_name=last_name, password=password).one_or_none()
+        first_name=first_name, last_name=last_name).one_or_none()
 
     if person is None:
         raise fastapi.exceptions.HTTPException(
@@ -174,12 +174,21 @@ def resend_verification(first_name: str, last_name: str, password: str, server: 
             },
         )
 
+    if person.verified:
+        return fastapi.responses.JSONResponse(
+            content={
+                "status": "ALREADY VERIFIED",
+                "msg": "You are already Verified!"
+            },
+            status_code=fastapi.status.HTTP_201_CREATED,
+        )
+
     token = tokens.create_access_token(
-        {"fname": first_name, "lname": last_name, "password": check.hash_password(password)})
+        {"fname": first_name, "lname": last_name, "password": person.password})
 
     subject = "verify account"
     message = f'Hi please verify you account<br>\
-        <form action="https://kvkpop-organic-eureka-j666769vx94h594v-8080.preview.app.github.dev/person/verify" method="post">\
+        <form action="https://kvkpop-probable-potato-w66656x6v4vf5wgq-8080.preview.app.github.dev/person/verify" method="post">\
             <input type="hidden" name="token" value="{token}">\
             <input type="submit" value="Click Here">\
         </form>'
@@ -210,11 +219,19 @@ def resend_verification(first_name: str, last_name: str, password: str, server: 
             },
         )
 
+    return fastapi.responses.JSONResponse(
+        content={
+            "status": "VERIFICATION RESENT",
+            "msg": "Please check your email to verify its you!"
+        },
+        status_code=fastapi.status.HTTP_201_CREATED,
+    )
+
 
 @router.get("/me")
 def person(first_name: str, last_name: str, password: str, db: orm.Session = Depends(db_session)):
     person: Optional[model.Person] = db.query(model.Person).filter_by(
-        first_name=first_name, last_name=last_name, password=check.hash_password(password)).one_or_none()
+        first_name=first_name, last_name=last_name).one_or_none()
 
     if person is None:
         raise fastapi.exceptions.HTTPException(
@@ -225,4 +242,52 @@ def person(first_name: str, last_name: str, password: str, db: orm.Session = Dep
             },
         )
 
-    return schema.User(**person.__dict__)
+    if not check.verify_password(password, person.password):
+        raise fastapi.exceptions.HTTPException(
+            status_code=fastapi.status.HTTP_400_BAD_REQUEST,
+            detail={
+                "status": "INVALID DATA",
+                "message": "Password is Incorrect"
+            },
+        )
+
+    return schema.User(
+        first_name=person.first_name,
+        last_name=person.last_name,
+        img_path=person.img_path,
+        gender=person.gender.value,
+        nationality=person.nationality,
+        dob=str(person.dob),
+        email=person.email,
+        phone=person.phone,
+        verified=person.verified
+    )
+
+
+@router.get("/mine")
+def person_tickets(first_name: str, last_name: str, password: str, db: orm.Session = Depends(db_session)):
+    person: Optional[model.Person] = db.query(model.Person).filter_by(
+        first_name=first_name, last_name=last_name).one_or_none()
+
+    if person is None:
+        raise fastapi.exceptions.HTTPException(
+            status_code=fastapi.status.HTTP_400_BAD_REQUEST,
+            detail={
+                "status": "DATA INVALID",
+                "message": "Person is not There"
+            },
+        )
+
+    if not check.verify_password(password, person.password):
+        raise fastapi.exceptions.HTTPException(
+            status_code=fastapi.status.HTTP_400_BAD_REQUEST,
+            detail={
+                "status": "INVALID DATA",
+                "message": "Password is Incorrect"
+            },
+        )
+
+    tickets = db.query(model.Ticket).filter_by(
+        fname=person.first_name, lname=person.last_name).all()
+
+    return [schema.Ticket(**ticket.__dict__) for ticket in tickets]

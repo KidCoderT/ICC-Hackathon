@@ -17,7 +17,7 @@ from sqlalchemy import LargeBinary
 from models.database import db_session, orm
 from models import schema, model
 
-from src import tokens
+from src import tokens, check
 from src.email import smtp_server, SENDER_EMAIL
 from .auth import current_user
 
@@ -25,26 +25,36 @@ router = fastapi.APIRouter(prefix="/ticket", tags=["tickets_manager"])
 max_binary_size = LargeBinary().length
 
 
-@router.post("/create/{json_info}")
+@router.post("/create/")
 def create_ticket(
-    image_file: fastapi.UploadFile,
-    json_info: str,
+    info: schema.NewTicket,
+    user: schema.LoginUser,
     server: SMTP_SSL = Depends(smtp_server),
     db: orm.Session = Depends(db_session)
 ):
-    image_bytes = image_file.file.read()
-    is_valid_img = imghdr.what(image_file.filename, image_bytes)
+    person: Optional[model.Person] = db.query(model.Person).filter_by(
+        first_name=user.first_name, last_name=user.last_name).one_or_none()
 
-    if not is_valid_img:
+    if person is None:
         raise fastapi.exceptions.HTTPException(
-            detail={"STATUS": "INVALID FILE", "msg": "image type is invalid"},
-            status_code=fastapi.status.HTTP_406_NOT_ACCEPTABLE,
+            status_code=fastapi.status.HTTP_400_BAD_REQUEST,
+            detail={
+                "status": "DATA INVALID",
+                "message": "Person is not There"
+            },
         )
 
-    new_ticket_info = schema.NewTicket(**json.loads(json_info))
+    if not check.verify_password(user.password, person.password):
+        raise fastapi.exceptions.HTTPException(
+            status_code=fastapi.status.HTTP_400_BAD_REQUEST,
+            detail={
+                "status": "INVALID DATA",
+                "message": "Password is Incorrect"
+            },
+        )
 
     stadium: Optional[model.Stadium] = db.query(model.Stadium).filter_by(
-        name=new_ticket_info.stadium_name).one_or_none()
+        name=info.stadium_name).one_or_none()
 
     if stadium is None:
         raise fastapi.exceptions.HTTPException(
@@ -54,15 +64,15 @@ def create_ticket(
 
     block_names = [block.name for block in stadium.blocks]
 
-    if new_ticket_info.block not in block_names:
+    if info.block not in block_names:
         raise fastapi.exceptions.HTTPException(
             detail={"STATUS": "NOT FOUND", "msg": "Block Not Found"},
             status_code=fastapi.status.HTTP_404_NOT_FOUND,
         )
 
-    block = stadium.blocks[block_names.index(new_ticket_info.block)]
+    block = stadium.blocks[block_names.index(info.block)]
     seat = list(filter(lambda seat: seat.row_name ==
-                new_ticket_info.seat_row and seat.seat_no == new_ticket_info.seat_no, block.seats))
+                info.seat_row and seat.seat_no == info.seat_no, block.seats))
 
     if len(seat) != 1:
         raise fastapi.exceptions.HTTPException(
@@ -72,11 +82,11 @@ def create_ticket(
 
     # Set the conditions for the query
     conditions = {
-        "match_id": new_ticket_info.match_id,
-        "stadium_name": new_ticket_info.stadium_name,
-        "block_name": new_ticket_info.block,
-        "seat_row": new_ticket_info.seat_row,
-        "seat_no": new_ticket_info.seat_no,
+        "match_id": info.match_id,
+        "stadium": info.stadium_name,
+        "block": info.block,
+        "row_name": info.seat_row,
+        "seat_no": info.seat_no,
     }
 
     query = db.query(model.Ticket).filter(
@@ -109,32 +119,14 @@ def create_ticket(
             },
         )
 
-    file_path = f"photos/{new_ticket_info.first_name}-{new_ticket_info.last_name}.{image_file.filename.split('.')[-1]}"
-    with open(file_path, "wb") as buffer:
-        buffer.write(image_bytes)
-
-    person = model.Person(
-        gender=new_ticket_info.gender,
-        nationality=new_ticket_info.nationality,
-        first_name=new_ticket_info.first_name,
-        last_name=new_ticket_info.last_name,
-        dob=new_ticket_info.dob,
-        email=new_ticket_info.email,
-        phone=new_ticket_info.phone,
-        img_path=file_path
-    )
-
-    db.add(person)
-    db.commit()
-    db.refresh(person)
-
     temp_ticket = model.TempTicket(
-        person=person.id,
-        match_id=new_ticket_info.match_id,
-        stadium_name=new_ticket_info.stadium_name,
-        block_name=new_ticket_info.block,
-        seat_row=new_ticket_info.seat_row,
-        seat_no=new_ticket_info.seat_no
+        fname=person.first_name,
+        lname=person.last_name,
+        match_id=info.match_id,
+        stadium=info.stadium_name,
+        block=info.block,
+        row_name=info.seat_row,
+        seat_no=info.seat_no
     )
 
     db.add(temp_ticket)
@@ -146,7 +138,7 @@ def create_ticket(
 
     subject = "verify token"
     message = f'Hi please verify you account<br>\
-        <form action="https://kvkpop-organic-eureka-j666769vx94h594v-8080.preview.app.github.dev/ticket/generate" method="post">\
+        <form action="https://kvkpop-probable-potato-w66656x6v4vf5wgq-8080.preview.app.github.dev/ticket/generate" method="post">\
             <input type="hidden" name="token" value="{token}">\
             <input type="submit" value="Click Here">\
         </form>'
@@ -159,24 +151,7 @@ def create_ticket(
     text = MIMEText(message, "html")
     msg.attach(text)
 
-    try:
-        server.sendmail(SENDER_EMAIL, person.email, msg.as_string())
-    except SMTPRecipientsRefused as exc:
-        db.delete(person)
-        db.delete(temp_ticket)
-        db.commit()
-
-        return fastapi.exceptions.HTTPException(
-            status_code=fastapi.status.HTTP_400_BAD_REQUEST,
-            detail={
-                "status": "FAILED",
-                "message": (
-                    f"because of {str(exc)} We were not able to send an "
-                    "email to u and hence creation of your ticket failed! "
-                    "please try again after some time!!"
-                ),
-            },
-        )
+    server.sendmail(SENDER_EMAIL, person.email, msg.as_string())
 
     return fastapi.responses.JSONResponse(
         content={
@@ -213,7 +188,7 @@ def generate_ticket(token: str = fastapi.Form(), server: SMTP_SSL = Depends(smtp
         )
 
     person: Optional[model.Person] = db.query(model.Person).filter_by(
-        id=temp_ticket.person).one_or_none()
+        first_name=temp_ticket.fname, last_name=temp_ticket.lname).one_or_none()
 
     if person is None:
         raise fastapi.exceptions.HTTPException(
@@ -226,9 +201,9 @@ def generate_ticket(token: str = fastapi.Form(), server: SMTP_SSL = Depends(smtp
 
     new_ticket = model.Ticket(
         match_id=temp_ticket.match_id,
-        stadium_name=temp_ticket.stadium_name,
-        block_name=temp_ticket.block_name,
-        seat_row=temp_ticket.seat_row,
+        stadium=temp_ticket.stadium,
+        block=temp_ticket.block,
+        row_name=temp_ticket.row_name,
         seat_no=temp_ticket.seat_no,
         timestamps="[]",
         person=person
@@ -262,14 +237,14 @@ def generate_ticket(token: str = fastapi.Form(), server: SMTP_SSL = Depends(smtp
     # create email
 
     subject = "QRCODE"
-    message = 'Here is your qrcode'
+    message = f'Here is your qrcode & your ticket id is <b>{new_ticket.ticket_id}</b>'
 
     msg = MIMEMultipart()
     msg["From"] = SENDER_EMAIL
     msg["To"] = person.email
     msg["Subject"] = subject
 
-    text = MIMEText(message)
+    text = MIMEText(message, "html")
     msg.attach(text)
 
     image = MIMEImage(buf.getvalue(), name="my_qr_code.png")
@@ -386,24 +361,63 @@ def verify_ticket(
 
 
 # resend qrcode
-# @router.post("/resend")
-# def resend_qrcode(, server: SMTP_SSL = Depends(smtp_server)):
-#     subject = "QRCODE"
-#     message = 'Here is your qrcode'
+@router.post("/resend")
+def resend_qrcode(user: schema.LoginUser, match_id: int, server: SMTP_SSL = Depends(smtp_server), db: orm.Session = Depends(db_session)):
+    person: Optional[model.Person] = db.query(model.Person).filter_by(
+        first_name=user.first_name, last_name=user.last_name).one_or_none()
 
-#     msg = MIMEMultipart()
-#     msg["From"] = SENDER_EMAIL
-#     msg["To"] = person.email
-#     msg["Subject"] = subject
+    if person is None:
+        raise fastapi.exceptions.HTTPException(
+            status_code=fastapi.status.HTTP_400_BAD_REQUEST,
+            detail={
+                "status": "DATA INVALID",
+                "message": "Token has some error please redo ticketing"
+            },
+        )
 
-#     text = MIMEText(message)
-#     msg.attach(text)
+    if not check.verify_password(user.password, person.password):
+        raise fastapi.exceptions.HTTPException(
+            status_code=fastapi.status.HTTP_400_BAD_REQUEST,
+            detail={
+                "status": "INVALID DATA",
+                "message": "Password is Incorrect"
+            },
+        )
 
-#     image = MIMEImage(buf.getvalue(), name="my_qr_code.png")
-#     msg.attach(image)
+    ticket: Optional[model.Ticket] = db.query(model.Ticket).filter_by(
+        fname=person.first_name, lname=person.last_name, match_id=match_id).one_or_none()
 
-#     # send email
+    if ticket is None:
+        raise fastapi.exceptions.HTTPException(
+            status_code=fastapi.status.HTTP_404_NOT_FOUND,
+            detail={
+                "status": "DATA INVALID",
+                "message": "Ticket Not Found"
+            },
+        )
 
-#     server.sendmail(SENDER_EMAIL, person.email, msg.as_string())
+    subject = "QRCODE"
+    message = f'Here is your qrcode & your ticket id is <b>{ticket.ticket_id}</b>'
 
-# send through mobile
+    msg = MIMEMultipart()
+    msg["From"] = SENDER_EMAIL
+    msg["To"] = person.email
+    msg["Subject"] = subject
+
+    text = MIMEText(message, "html")
+    msg.attach(text)
+
+    image = MIMEImage(ticket.qrcode, name="my_qr_code.png")
+    msg.attach(image)
+
+    # send email
+
+    server.sendmail(SENDER_EMAIL, person.email, msg.as_string())
+
+    return fastapi.responses.JSONResponse(
+        content={
+            "status": "DONE",
+            "msg": "Ticket Created and QRCode Sent to you"
+        },
+        status_code=fastapi.status.HTTP_201_CREATED,
+    )

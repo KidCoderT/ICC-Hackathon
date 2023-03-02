@@ -20,7 +20,8 @@ class Database(metaclass=SingletonMeta):
     """
 
     engine = sql.create_engine(DATABASE_URL, echo=True)
-    sessionmaker = orm.sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    sessionmaker = orm.sessionmaker(
+        autocommit=False, autoflush=False, bind=engine)
 
     def init_db(self, base):
         base.metadata.create_all(self.engine)

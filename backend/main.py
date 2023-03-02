@@ -15,6 +15,7 @@ from models import database
 from models.model import Base
 import routes
 
+
 app = fastapi.FastAPI()
 
 
@@ -35,6 +36,7 @@ def on_startup():
 
 app.include_router(routes.tickets_router)
 app.include_router(routes.stadium_router)
+app.include_router(routes.person_router)
 app.include_router(routes.match_router)
 app.include_router(routes.auth_router)
 

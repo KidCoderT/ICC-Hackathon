@@ -63,6 +63,9 @@ class BlockRowInfo(BaseModel):
 
 class BookSeatBlock(BaseModel):
     name: str
+    elevation: float
+    x_offset: float
+    y_offset: float
     rows: List[BlockRowInfo]
 
 
@@ -82,6 +85,14 @@ class FetchStadiumMatches(BaseModel):
 
 
 class NewTicket(BaseModel):
+    match_id: int
+    stadium_name: str
+    block: str
+    seat_row: str
+    seat_no: int
+
+
+class NewUser(BaseModel):
     gender: str
     nationality: str
     first_name: str
@@ -89,12 +100,7 @@ class NewTicket(BaseModel):
     dob: date
     email: str
     phone: str
-
-    match_id: int
-    stadium_name: str
-    block: str
-    seat_row: str
-    seat_no: int
+    password: str
 
 
 class Token(BaseModel):
@@ -104,3 +110,43 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: Optional[str] = None
+
+
+class User(BaseModel):
+    first_name: str
+    last_name: str
+    img_path: str
+
+    gender: str
+    nationality: str
+    dob: date
+
+    email: str
+    phone: str
+    verified: bool
+
+
+class LoginUser(BaseModel):
+    first_name: str
+    last_name: str
+    password: str
+
+
+class UserTicket(BaseModel):
+    id: int
+    ticket_id: str
+    match_id: int
+    timestamps: List[datetime]
+
+
+class Ticket(BaseModel):
+    id: int
+    match_id: int
+    fname: str
+    lname: str
+    stadium: str
+    block: str
+    row_name: str
+    seat_no: int
+    # timestamps: List[str]
+    ticket_id: str
