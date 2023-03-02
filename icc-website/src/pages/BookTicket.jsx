@@ -1,16 +1,17 @@
 import React from "react";
 import * as Chakra from "@chakra-ui/react";
-import { ViewIcon } from "@chakra-ui/icons";
+import { ChevronDownIcon, ViewIcon } from "@chakra-ui/icons";
+import { useSearchParams } from "react-router-dom";
 
 const PasswordInput = ({ value, onChange }) => {
   const [show, setShow] = React.useState(false);
   const handleClick = () => setShow(!show);
 
   return (
-    <Chakra.InputGroup size="md" px={3} mb={3}>
+    <Chakra.InputGroup size="md" px={3} mb={1}>
       <Chakra.Input
         value={value}
-        onChange={onChange}
+        onChange={(e) => onChange(e.target.value)}
         pr="4.5rem"
         type={show ? "text" : "password"}
         placeholder="Enter password"
@@ -29,15 +30,98 @@ const PasswordInput = ({ value, onChange }) => {
 };
 
 const BookTicket = () => {
-  const [userMade, setUserMade] = React.useState(false);
+  const [params, _] = useSearchParams()
+
+  const [userMade, setUserMade] = React.useState(true);
   const [fname, setFName] = React.useState("");
   const [lname, setLName] = React.useState("");
   const [password, setPassword] = React.useState("");
-  const [redoPassword, setRedoPassword] = React.useState("");
   const [email, setEmail] = React.useState("");
+  const [phone, setPhone] = React.useState("");
   const [dob, setDob] = React.useState("");
   const [nationality, setNationality] = React.useState("");
   const [gender, setGender] = React.useState("");
+  const [selectedImage, setSelectedImage] = React.useState(null);
+  
+  const loginAndCreateTicket = () => {
+    if (fname.length === 0 || lname.length === 0) {
+      return
+    }
+
+    if (password.length === 0) {
+      return
+    }
+
+    fetch(
+      'https://localhost:8080/ticket/create/', {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          "info": JSON.parse(params.get("info")),
+          "user": {
+            "first_name": fname,
+            "last_name": lname,
+            "password": password
+          }
+        })
+      }
+    )
+      .then((response) => response.json())
+      .then((data) => {
+        console.log(data);
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+  }
+
+  const SingupAndMakeTicket = () => {
+    if (fname.length === 0 || lname.length === 0) {
+      return
+    }
+
+    if (password.length === 0) {
+      return
+    }
+
+    let user = {
+      gender: gender,
+      nationality: nationality,
+      first_name: fname,
+      last_name: lname,
+      dob: dob,
+      email: email,
+      phone: phone,
+      password: password,
+    }; 
+
+    const formDataJson = JSON.stringify(user);
+
+    const requestOptions = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      },
+      body: formDataJson,
+    };
+
+    const fileData = new FormData();
+    fileData.append('image_file', selectedImage);
+    fileData.append('json_info', formDataJson);
+
+    requestOptions.body = fileData;
+
+    fetch('https://localhost:8080/person/create/' + formDataJson, requestOptions).then((response) => response.json())
+    .then((data) => {
+      console.log(data);
+    })
+    .catch((error) => {
+      console.error(error);
+    });;
+    
+  }
 
   return (
     <Chakra.Flex
@@ -74,7 +158,7 @@ const BookTicket = () => {
               {/* F Name */}
               <Chakra.Input
                 value={fname}
-                onChange={setFName}
+                onChange={(e) => setFName(e.target.value)}
                 textAlign="center"
                 placeholder="First Name"
                 variant="outline"
@@ -84,25 +168,20 @@ const BookTicket = () => {
               {/* L Name */}
               <Chakra.Input
                 value={lname}
-                onChange={setLName}
+                onChange={(e) => setLName(e.target.value)}
                 textAlign="center"
                 placeholder="Last Name"
-                variant="outline"
-              />
-
-              {/* Email */}
-              <Chakra.Input
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                textAlign="center"
-                placeholder="Email"
                 variant="outline"
               />
             </Chakra.Flex>
             {/* Password - Hashed */}
             <PasswordInput value={password} onChange={setPassword} />
+            
+            <Chakra.Button w="100%" variant="link" mt={6} onClick={() => {setUserMade(false)}}>
+              Dont have. Account? Create One
+            </Chakra.Button>
 
-            <Chakra.Button colorScheme="green" w="100%" mt={6}>
+            <Chakra.Button colorScheme="green" w="100%" mt={6} onClick={loginAndCreateTicket}>
               Send Verification
             </Chakra.Button>
           </>
@@ -123,7 +202,7 @@ const BookTicket = () => {
               {/* F Name */}
               <Chakra.Input
                 value={fname}
-                onChange={setFName}
+                onChange={(e) => setFName(e.target.value)}
                 textAlign="center"
                 placeholder="First Name"
                 variant="outline"
@@ -133,7 +212,7 @@ const BookTicket = () => {
               {/* L Name */}
               <Chakra.Input
                 value={lname}
-                onChange={setLName}
+                onChange={(e) => setLName(e.target.value)}
                 textAlign="center"
                 placeholder="Last Name"
                 variant="outline"
@@ -142,12 +221,20 @@ const BookTicket = () => {
               {/* Email */}
               <Chakra.Input
                 value={email}
-                onChange={setEmail}
+                onChange={(e) => setEmail(e.target.value)}
                 textAlign="center"
                 placeholder="Email"
                 variant="outline"
               />
             </Chakra.Flex>
+
+            <Chakra.Input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                textAlign="center"
+                placeholder="Phone Number"
+                variant="outline"
+              />
 
             {/* Date of Birth */}
             <Chakra.Flex direction="column" mb={3} px={3}>
@@ -155,7 +242,7 @@ const BookTicket = () => {
               <Chakra.Input
                 type="date"
                 value={dob}
-                onChange={setDob}
+                onChange={(e) => setDob(e.target.value)}
                 textAlign="center"
                 placeholder="Date of Birth"
                 variant="outline"
@@ -164,48 +251,83 @@ const BookTicket = () => {
 
             {/* Nationality */}
             <Chakra.Flex mb={3} px={3} flexDirection="column">
-              <Chakra.FormLabel>Nationality</Chakra.FormLabel>
-              <Chakra.Select
-                value={nationality}
-                onChange={setNationality}
-                textAlign="center"
-                placeholder="Select your nationality"
-                variant="outline"
-              >
-                <option value="AUS">AUS</option>
-                <option value="IND">IND</option>
-                <option value="AFR">AFR</option>
-                <option value="UK">UK</option>
-                <option value="BAN">BAN</option>
-              </Chakra.Select>
+              <Chakra.Menu>
+                <Chakra.MenuButton
+                  flexGrow={1}
+                  as={Chakra.Button}
+                  rightIcon={<ChevronDownIcon />}
+                  colorScheme="whiteAlpha"
+                  variant="outline"
+                >
+                  {nationality || "Whats your Nationality..."}
+                </Chakra.MenuButton>
+
+                <Chakra.MenuList colorScheme="whiteAlpha" variant="outline">
+                  {["AUS", "IND", "AFR", "UK", "BAN"].map((item, key) => (
+                    <Chakra.MenuItem
+                      key={key}
+                      color="black"
+                      onClick={() => {
+                        setNationality(item);
+                      }}
+                    >
+                      {item}
+                    </Chakra.MenuItem>
+                  ))}
+                </Chakra.MenuList>
+              </Chakra.Menu>
             </Chakra.Flex>
 
             {/* Gender */}
             <Chakra.Flex direction="column" mb={3} px={3}>
-              <label>Gender</label>
-              <Chakra.Select
-                placeholder="Select Gender"
-                value={gender}
-                onChange={setGender}
-              >
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-              </Chakra.Select>
+              <Chakra.Menu>
+                <Chakra.MenuButton
+                  flexGrow={1}
+                  as={Chakra.Button}
+                  rightIcon={<ChevronDownIcon />}
+                  colorScheme="whiteAlpha"
+                  variant="outline"
+                >
+                  {gender || "Gender"}
+                </Chakra.MenuButton>
+
+                <Chakra.MenuList colorScheme="whiteAlpha" variant="outline">
+                  {["male", "female", "other"].map((item, key) => (
+                    <Chakra.MenuItem
+                      key={key}
+                      color="black"
+                      onClick={() => {
+                        setGender(item);
+                      }}
+                    >
+                      {item}
+                    </Chakra.MenuItem>
+                  ))}
+                </Chakra.MenuList>
+              </Chakra.Menu>
             </Chakra.Flex>
 
             <Chakra.Flex direction="column" mb={3} px={3}>
               <Chakra.FormLabel htmlFor="image-upload" textAlign="center">
                 Upload Image
               </Chakra.FormLabel>
-              <Chakra.Input type="file" id="image-upload" accept="image/*" />
+              <input
+        type="file"
+        name="myImage"
+        onChange={(event) => {
+          setSelectedImage(event.target.files[0]);
+        }}
+      />
             </Chakra.Flex>
 
             {/* Password - Hashed */}
             <PasswordInput value={password} onChange={setPassword} />
-            <PasswordInput value={redoPassword} onChange={setRedoPassword} />
 
-            <Chakra.Button colorScheme="green" w="100%" mt={6}>
+            <Chakra.Button w="100%" variant="link" mt={6} onClick={() => {setUserMade(true)}}>
+              Already have Account? Sign In
+            </Chakra.Button>
+
+            <Chakra.Button colorScheme="green" w="100%"  onClick={SingupAndMakeTicket} mt={6}>
               Send Verification
             </Chakra.Button>
           </>

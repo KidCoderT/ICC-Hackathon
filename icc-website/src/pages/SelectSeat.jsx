@@ -7,7 +7,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { Navigate } from "react-router-dom";
 
 function easeOutCirc(x) {
-  return Math.sqrt(1 - Math.pow(x - 1, 4))
+  return Math.sqrt(1 - Math.pow(x - 1, 4));
 }
 
 const SelectSeat = () => {
@@ -24,52 +24,52 @@ const SelectSeat = () => {
 
   const [error, setError] = React.useState(false);
 
-  const refContainer = React.useRef()
-  const [loading, setLoading] = React.useState(true)
-  const refRenderer = React.useRef()
-  const urlDogGLB = './../assets/3d-model.obj'
+  const refContainer = React.useRef();
+  const [loading, setLoading] = React.useState(true);
+  const refRenderer = React.useRef();
+  const urlDogGLB = "./../assets/3d-model.obj";
 
   const handleWindowResize = React.useCallback(() => {
-    const { current: renderer } = refRenderer
-    const { current: container } = refContainer
+    const { current: renderer } = refRenderer;
+    const { current: container } = refContainer;
     if (container && renderer) {
-      const scW = container.clientWidth
-      const scH = container.clientHeight
+      const scW = container.clientWidth;
+      const scH = container.clientHeight;
 
-      renderer.setSize(scW, scH)
+      renderer.setSize(scW, scH);
     }
-  }, [])
+  }, []);
 
   /* eslint-disable react-hooks/exhaustive-deps */
   React.useEffect(() => {
-    const { current: container } = refContainer
+    const { current: container } = refContainer;
 
     if (container) {
-      const scW = container.clientWidth
-      const scH = container.clientHeight
+      const scW = container.clientWidth;
+      const scH = container.clientHeight;
 
       const renderer = new THREE.WebGLRenderer({
         antialias: true,
-        alpha: true
-      })
+        alpha: true,
+      });
 
-      renderer.setPixelRatio(window.devicePixelRatio)
-      renderer.setSize(scW, scH)
-      renderer.outputEncoding = THREE.sRGBEncoding
-      container.appendChild(renderer.domElement)
-      refRenderer.current = renderer
-      const scene = new THREE.Scene()
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(scW, scH);
+      renderer.outputEncoding = THREE.sRGBEncoding;
+      container.appendChild(renderer.domElement);
+      refRenderer.current = renderer;
+      const scene = new THREE.Scene();
 
-      const target = new THREE.Vector3(-0.5, 1.2, 0)
+      const target = new THREE.Vector3(-0.5, 1.2, 0);
       const initialCameraPosition = new THREE.Vector3(
         20 * Math.sin(0.2 * Math.PI),
         10,
         20 * Math.cos(0.2 * Math.PI)
-      )
+      );
 
       // 640 -> 240
       // 8   -> 6
-      const scale = scH * 0.005 + 4.8
+      const scale = scH * 0.005 + 4.8;
       const camera = new THREE.OrthographicCamera(
         -scale,
         scale,
@@ -77,28 +77,34 @@ const SelectSeat = () => {
         -scale,
         0.01,
         50000
-      )
-      camera.position.copy(initialCameraPosition)
-      camera.lookAt(target)
+      );
+      camera.position.copy(initialCameraPosition);
+      camera.lookAt(target);
 
-      const ambientLight = new THREE.AmbientLight(0xcccccc, 1)
-      scene.add(ambientLight)
+      const ambientLight = new THREE.AmbientLight(0xcccccc, 1);
+      scene.add(ambientLight);
 
-      const controls = new OrbitControls(camera, renderer.domElement)
-      controls.autoRotate = true
-      controls.target = target
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.autoRotate = true;
+      controls.target = target;
 
       const geometry = new THREE.BoxGeometry( 1, 1, 1 );
       const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
       const cube = new THREE.Mesh( geometry, material );
-      scene.add( cube );
+      // const loader = new THREE.GLTFLoader();
+      // loader.load(urlDogGLB, (obj) => {
+      //   const newModel = obj.scene;
+      //   scene.add(newModel);
+      //   setModel(newModel);
+      //   resolve();
+      //   animate();
+      // });
 
-
-      let req = null
-      let frame = 0
+      let req = null;
+      let frame = 0;
 
       const animate = () => {
-        req = requestAnimationFrame(animate)
+        req = requestAnimationFrame(animate);
 
         // frame = frame <= 100 ? frame + 1 : frame
 
@@ -116,25 +122,23 @@ const SelectSeat = () => {
         //   controls.update()
         // }
 
-        renderer.render(scene, camera)
-      }
-      animate();
+        renderer.render(scene, camera);
+      };
 
       return () => {
-        cancelAnimationFrame(req)
-        renderer.domElement.remove()
-        renderer.dispose()
-      }
+        cancelAnimationFrame(req);
+        renderer.domElement.remove();
+        renderer.dispose();
+      };
     }
-
-  }, [])
+  }, []);
 
   React.useEffect(() => {
-    window.addEventListener('resize', handleWindowResize, false)
+    window.addEventListener("resize", handleWindowResize, false);
     return () => {
-      window.removeEventListener('resize', handleWindowResize, false)
-    }
-  }, [handleWindowResize])
+      window.removeEventListener("resize", handleWindowResize, false);
+    };
+  }, [handleWindowResize]);
 
   const validate = () => {
     if (block === "" || blockIndex === -1) {
@@ -149,7 +153,7 @@ const SelectSeat = () => {
 
   React.useEffect(() => {
     fetch(
-      `https://kvkpop-ideal-palm-tree-666656w6vr9h4vj7-8080.preview.app.github.dev/match/get/${matchId}`
+      `https://localhost:8080/match/get/${matchId}`
     )
       .then((response) => response.json())
       .then((data) => {
@@ -192,7 +196,7 @@ const SelectSeat = () => {
         <Chakra.ModalContent h="100vh">
           <Chakra.ModalHeader>Seat Viewing</Chakra.ModalHeader>
           <Chakra.ModalCloseButton />
-          <Chakra.ModalBody background={"black"} style={{display: "flex"}}>
+          <Chakra.ModalBody background={"black"} style={{ display: "flex" }}>
             {/* Seat Viewing */}
             {/* <canvas style={{ width: "100%", height: "100%" }} ref={threeRef} />
             {camera && (
@@ -215,13 +219,6 @@ const SelectSeat = () => {
                 })}
               </Chakra.Script>
             )} */}
-
-            <Chakra.Box
-                ref={refContainer}
-                className="voxel-dog"
-                w="100%"
-                flexGrow={1}
-               />
           </Chakra.ModalBody>
           <Chakra.ModalFooter textAlign={"center"}>
             <Chakra.Heading size={"md"}>Block: AA, Seat: NAN</Chakra.Heading>
@@ -417,7 +414,8 @@ const SelectSeat = () => {
               </Chakra.Alert>
             )}
 
-            {valid && <Navigate to="/book" replace={true} />}
+            {valid && <Navigate to={`/book?info=${JSON.stringify({'match_id': match["id"], 'stadium_name': match["stadium_name"], 'block': block, 'seat_row': seatRow, 'seat_no': seatNo})}`} replace={true} />}
+            
           </Chakra.Box>
         ) : (
           <></>

@@ -32,6 +32,7 @@ def create_ticket(
     server: SMTP_SSL = Depends(smtp_server),
     db: orm.Session = Depends(db_session)
 ):
+    print(info, user)
     person: Optional[model.Person] = db.query(model.Person).filter_by(
         first_name=user.first_name, last_name=user.last_name).one_or_none()
 
@@ -138,7 +139,7 @@ def create_ticket(
 
     subject = "verify token"
     message = f'Hi please verify you account<br>\
-        <form action="https://kvkpop-ideal-palm-tree-666656w6vr9h4vj7-8080.preview.app.github.dev/ticket/generate" method="post">\
+        <form action="https://localhost:8080/ticket/generate" method="post">\
             <input type="hidden" name="token" value="{token}">\
             <input type="submit" value="Click Here">\
         </form>'

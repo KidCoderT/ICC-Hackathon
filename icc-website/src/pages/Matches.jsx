@@ -143,7 +143,7 @@ const Matches = () => {
   const [matches, setMatches] = React.useState([])
   
   React.useEffect(() => {
-    fetch('https://kvkpop-ideal-palm-tree-666656w6vr9h4vj7-8080.preview.app.github.dev/match/all')
+    fetch('https://localhost:8080/match/all')
       .then(response => response.json())
       .then(data => {
         console.log(data)
