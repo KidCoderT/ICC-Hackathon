@@ -17,7 +17,7 @@ const router = createBrowserRouter([
     element: <Matches />,
   },
   {
-    path: "seat",
+    path: "seat/:matchId",
     element: <SelectSeat />,
   },
   {

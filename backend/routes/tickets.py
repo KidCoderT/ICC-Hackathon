@@ -138,7 +138,7 @@ def create_ticket(
 
     subject = "verify token"
     message = f'Hi please verify you account<br>\
-        <form action="https://kvkpop-probable-potato-w66656x6v4vf5wgq-8080.preview.app.github.dev/ticket/generate" method="post">\
+        <form action="https://kvkpop-ideal-palm-tree-666656w6vr9h4vj7-8080.preview.app.github.dev/ticket/generate" method="post">\
             <input type="hidden" name="token" value="{token}">\
             <input type="submit" value="Click Here">\
         </form>'

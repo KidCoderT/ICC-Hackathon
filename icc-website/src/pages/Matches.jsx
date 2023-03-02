@@ -2,6 +2,7 @@ import React from "react";
 import moment from "moment";
 import * as Chakra from "@chakra-ui/react";
 import { TimeIcon } from "@chakra-ui/icons";
+import { Link } from "react-router-dom";
 
 const Match = ({
   datetime,
@@ -11,8 +12,9 @@ const Match = ({
   booked_seats,
   COUNTRY1,
   COUNTRY2,
+  to
 }) => {
-  let date = new Date(datetime);
+  let date = new Date(datetime * 1000);
   let formattedDate = moment(date).format("DD-MM-YYYY");
   let formattedTime = moment(date).format("h:mm A");
 
@@ -95,6 +97,7 @@ const Match = ({
           </Chakra.Flex>
 
           <Chakra.Button
+          as={Link}
             size={"sm"}
             flexGrow={1}
             ml={5}
@@ -102,6 +105,7 @@ const Match = ({
               matchBeingPlayed ? "red" : seatsBooked ? "yellow" : "blue"
             }
             isDisabled={seatsBooked || matchBeingPlayed}
+            to={to}
           >
             {btn_msg}
           </Chakra.Button>
@@ -115,7 +119,7 @@ const Match = ({
             bg="whiteAlpha.300"
           />
           <Chakra.Text mb={2} mx={3} fontWeight={"medium"} fontSize="sm">
-            Remaining Seats: {(booked_seats / seats) * 100}
+            Remaining Seats: {(seats - booked_seats)}
           </Chakra.Text>
           <Chakra.Box
             borderRadius="full"
@@ -136,6 +140,20 @@ const Match = ({
 };
 
 const Matches = () => {
+  const [matches, setMatches] = React.useState([])
+  
+  React.useEffect(() => {
+    fetch('https://kvkpop-ideal-palm-tree-666656w6vr9h4vj7-8080.preview.app.github.dev/match/all')
+      .then(response => response.json())
+      .then(data => {
+        console.log(data)
+        setMatches(data)
+      })
+      .catch(error => {
+        console.error(error);
+      });
+  }, [])
+  
   return (
     <Chakra.Box as="main" background="blackAlpha.900" minH={"100vh"}>
       <Chakra.Container color="whiteAlpha.800" maxW="80%" py={10}>
@@ -157,33 +175,19 @@ const Matches = () => {
           alignItems={"center"}
           justifyContent={"center"}
         >
-          <Match
-            stadium="Chinna Swami Stgadium"
-            datetime="2023-03-01 13:59:52"
-            type="t20"
-            seats={500}
-            booked_seats={500}
-            COUNTRY1="USA"
-            COUNTRY2="AUS"
-          />
-          <Match
-            stadium="Aussies Flare Stadium"
-            datetime="2023-02-01 11:59:52"
-            type="odi"
-            seats={500}
-            booked_seats={200}
-            COUNTRY1="USA"
-            COUNTRY2="AUS"
-          />
-          <Match
-            stadium="Great Eagle Stadium"
-            datetime="2023-12-01 19:59:42"
-            type="test"
-            seats={500}
-            booked_seats={300}
-            COUNTRY1="USA"
-            COUNTRY2="AUS"
-          />
+          {matches.map((match, idx) => 
+            (<Match
+            key={idx}
+            stadium={match["stadium_name"]}
+            datetime={match["start_time"]}
+            type={match["match_format"]}
+            seats={match["total_seats"]}
+            booked_seats={match["booked_seats"]}
+            COUNTRY1={match["country_1"]}
+            COUNTRY2={match["country_2"]}
+              to={`/seat/${match["id"]}`}
+            />)
+          )}
         </Chakra.Flex>
       </Chakra.Container>
     </Chakra.Box>

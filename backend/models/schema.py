@@ -54,6 +54,8 @@ class UpcommingMatch(BaseModel):
     finished: bool
     booked_seats: int
     total_seats: int
+    country_1: str
+    country_2: str
 
 
 class BlockRowInfo(BaseModel):

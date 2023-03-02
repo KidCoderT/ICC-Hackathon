@@ -60,7 +60,9 @@ def all_matches(db: orm.Session = Depends(db_session)):
                 stadium_name=match.stadium_name,
                 booked_seats=len(booked_seats),
                 total_seats=len(all_stadium_seats),
-                finished=match.finished
+                finished=match.finished,
+                country_1=match.country_1,
+                country_2=match.country_2
             )
         )
 
@@ -80,7 +82,7 @@ def get_match(
             status_code=fastapi.status.HTTP_404_NOT_FOUND,
         )
 
-    booked_seats = [(ticket.seat_row, ticket.seat_no)
+    booked_seats = [(ticket.row_name, ticket.seat_no)
                     for ticket in match.tickets]
 
     blocks = []
@@ -96,9 +98,9 @@ def get_match(
             seat: model.Seat = seat
 
             try:
-                row_names[seat.row_name].append(seat.row_no)
+                row_names[seat.row_name].append(seat.seat_no)
             except:
-                row_names[seat.row_name] = [seat.row_no]
+                row_names[seat.row_name] = [seat.seat_no]
 
         raw_rows = [[
             name, sorted(row)] for name, row in row_names.items()]
@@ -132,7 +134,7 @@ def get_stadium_matches(
         result.append(
             schema.UpcommingMatch(
                 id=match.id,
-                match_format=match.match_format,
+                match_format=match.match_format.value,
                 start_time=match.start_time_timestamp,
                 stadium_name=match.stadium_name,
                 booked_seats=len(booked_seats),

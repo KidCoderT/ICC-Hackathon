@@ -106,6 +106,10 @@ class Match(Base):
 
     stadium = relationship('Stadium', backref='matches')
 
+    @property
+    def start_time_timestamp(self):
+        return int(self.start_time.timestamp())
+
 
 class Seat(Base):
     __tablename__ = 'seats'
@@ -185,8 +189,8 @@ class Ticket(Base):
     secret_id = Column(String(36), default=lambda: str(uuid.uuid4()))
     qrcode = Column(LargeBinary, nullable=True, default=None)
 
-    person = relationship('Person')
-    match = relationship('Match')
-    seat = relationship('Seat')
-    block1 = relationship('Block')
-    stadium1 = relationship('Stadium')
+    person = relationship('Person', backref='tickets')
+    match = relationship('Match', backref='tickets')
+    seat = relationship('Seat', backref='tickets')
+    block1 = relationship('Block', backref='tickets')
+    stadium1 = relationship('Stadium', backref='tickets')
