@@ -40,26 +40,25 @@ const SelectSeat = () => {
   const [scene, setScene] = useState();
   const [model, setModel] = useState();
 
-  // React.useEffect(() => {
-  //   console.log(block, blockIndex);
-  //   console.log(seatRow, seatNo);
-  //   if (threeRef.current) {
+  React.useEffect(() => {
+    console.log(seatRow, seatNo);
+    if (threeRef.current) {
   //     // adding a new scene
   //     const newScene = new THREE.Scene();
 
-  //     // adding a new camera
-  //     const newCamera = new THREE.PerspectiveCamera(
-  //       75,
-  //       window.innerWidth / window.innerHeight,
-  //       0.1,
-  //       1000
-  //     );
-  //     newCamera.position.z = 5;
+      // adding a new camera
+      const newCamera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+      newCamera.position.z = 5;
 
-  //     // creating a new renderer
-  //     const newRenderer = new THREE.WebGLRenderer();
-  //     newRenderer.setSize(window.innerWidth, window.innerHeight);
-  //     threeRef.current.appendChild(newRenderer.domElement);
+      // creating a new renderer
+      const newRenderer = new THREE.WebGLRenderer();
+      newRenderer.setSize(window.innerWidth, window.innerHeight);
+      threeRef.current.appendChild(newRenderer.domElement);
 
   //     //new controls
   //     const newControls = new OrbitControls(newCamera, newRenderer.domElement);
@@ -78,12 +77,12 @@ const SelectSeat = () => {
   //       setModel(newModel);
   //     });
 
-  //     setCamera(newCamera);
-  //     setRenderer(newRenderer);
-  //     setControls(newControls);
-  //     setScene(newScene);
-  //   }
-  // }, [block, blockIndex, seatRow, seatNo]);
+      setCamera(newCamera);
+      setRenderer(newRenderer);
+      setControls(newControls);
+      setScene(newScene);
+    
+   }}, [block, blockIndex, seatRow, seatNo]);
 
   return (
     <>
@@ -94,10 +93,34 @@ const SelectSeat = () => {
           <Chakra.ModalCloseButton />
           <Chakra.ModalBody background={"black"}>
             {/* Seat Viewing */}
-            {/* 
-                add a canvas
-                add three.js
-            */}
+            <canvas
+            style={{ width: "100%", height: "100%" }}
+            ref={threeRef}
+          />
+          {camera && (
+            <Chakra.Script>
+              {new Promise((resolve) => {
+                const loader = new THREE.GLTFLoader();
+                loader.load(
+                  "icc-website/src/assets/3d-model.fbx",
+                  (gltf) => {
+                    const newModel = gltf.scene;
+                    scene.add(newModel);
+                    setModel(newModel);
+                    resolve();
+                  }
+                );
+              }).then(() => {
+                const animate = () => {
+                  requestAnimationFrame(animate);
+                  controls.update();
+                  renderer.render(scene, camera);
+                };
+                animate();
+              })}
+            </Chakra.Script>
+          )}
+
           </Chakra.ModalBody>
           <Chakra.ModalFooter textAlign={"center"}>
             <Chakra.Heading size={"md"}>Block: AA, Seat: NAN</Chakra.Heading>
